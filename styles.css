@@ -1,0 +1,22 @@
+/* Nền tối bao quanh khung game, canh giữa màn hình */
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #0f0f1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: monospace;
+}
+
+#game-wrapper {
+  box-shadow: 0 0 0 2px #333; /* viền nhẹ quanh khung game */
+}
+
+#game-canvas {
+  /* Canvas vẽ ở 320x180 rồi phóng to x3 -> 960x540, GIỮ NÉT pixel (không làm mờ) */
+  image-rendering: pixelated;
+  width: 960px;
+  height: 540px;
+  display: block;
+}
