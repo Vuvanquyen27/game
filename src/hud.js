@@ -26,18 +26,27 @@ class HUD {
     this.elDText = document.getElementById("dlgtext");
     this.elDCur  = document.getElementById("dlgcursor");
 
-    this.mmctx = document.getElementById("minimap").getContext("2d");
+    // Minimap: scale tinh theo kich thuoc the gioi (khop khung CSS ~80px ngang).
+    const w = game.world;
+    this._mmScale = Math.max(1, Math.floor(80 / w.cols)); // 40 o -> scale 2
+    const mmW = w.cols * this._mmScale, mmH = w.rows * this._mmScale;
+    const mmEl = document.getElementById("minimap");
+    mmEl.width = mmW; mmEl.height = mmH; // dat lai do phan giai noi bo theo the gioi
+    this.mmctx = mmEl.getContext("2d");
     this.mmctx.imageSmoothingEnabled = false;
 
     // Minimap: lop o ve vao canvas dem, chi ve lai khi ban do doi (revision).
-    // Moi khung hinh chi blit + ve cham nguoi choi -> bo vong lap 240 o moi frame.
+    // Moi khung hinh chi blit + ve cham nguoi choi -> bo vong lap toan bo o moi frame.
     this._mmCanvas = document.createElement("canvas");
-    this._mmCanvas.width = 40; this._mmCanvas.height = 24; // 20x12 o, scale 2
+    this._mmCanvas.width = mmW; this._mmCanvas.height = mmH;
     this._mmCacheCtx = this._mmCanvas.getContext("2d");
     this._mmCacheCtx.imageSmoothingEnabled = false;
     this._mmRev = -1;
     this.pctx = document.getElementById("portrait").getContext("2d");
     this.pctx.imageSmoothingEnabled = false;
+
+    // Tieu de minimap -> hien ten khu vuc dang o (cap nhat khi doi khu).
+    this.elMmTitle = document.querySelector("#game-console .mm-title");
 
     // Trang thai hop thoai (hieu ung chay chu).
     this._dlgFull = null;
@@ -50,6 +59,11 @@ class HUD {
   /** Font UI (Pixelify Sans/Handjet) hỗ trợ tiếng Việt -> giữ nguyên dấu. */
   label(s) {
     return (s || "").trim();
+  }
+
+  /** Cap nhat ten khu vuc hien tai len tieu de minimap. */
+  setZoneName(name) {
+    if (this.elMmTitle) this.elMmTitle.textContent = name || "BẢN ĐỒ";
   }
 
   say(name, text) {
@@ -93,7 +107,7 @@ class HUD {
     } else if (cmd === "bag") {
       this.say("TÚI ĐỒ", "Đậu Thần x" + g.beans + "  ·  Cuốc  ·  Bình tưới  ·  Hạt giống.");
     } else if (cmd === "map") {
-      this.say("BẢN ĐỒ", "Nông trại Saiyan Valley. Cuốc đất (E) để mở rộng vùng trồng trọt.");
+      this.say("BẢN ĐỒ", "Đang ở khu " + g.world.zoneName + ". Đi tới mép bản đồ để sang khu kế bên.");
     } else if (cmd === "char") {
       this.say("NHÂN VẬT", this.label(g.character.name) + "  ·  LV" + s.level + "  ·  SĐ " + s.power +
         "  ·  HP " + Math.round(s.hp) + "/" + s.maxHp + "  KI " + Math.round(s.ki) + "/" + s.maxKi +
@@ -126,15 +140,15 @@ class HUD {
   }
 
   _drawMinimap(game) {
-    const w = game.world, p = game.player, ctx = this.mmctx, s = 2;
+    const w = game.world, p = game.player, ctx = this.mmctx, s = this._mmScale;
 
-    // Lop o chi ve lai vao canvas dem khi ban do thay doi (cuoc/trong/tuoi/thu/chin).
+    // Lop o chi ve lai vao canvas dem khi ban do thay doi (cuoc/trong/tuoi/thu/chin/doi khu).
     if (this._mmRev !== w.revision) {
-      const mc = this._mmCacheCtx;
+      const mc = this._mmCacheCtx, th = w.theme;
       for (let r = 0; r < w.rows; r++) {
         for (let c = 0; c < w.cols; c++) {
           const t = w.tiles[r][c];
-          let col = (t === TILE_SOIL) ? "#6b4a2b" : (t === TILE_ROCK) ? "#6f6a78" : (((c + r) % 2) ? "#447540" : "#4a7c45");
+          let col = (t === TILE_SOIL) ? th.soilDry : (t === TILE_ROCK) ? th.rkBase : (((c + r) % 2) ? th.gB : th.gA);
           const crop = w.crops.get(c + "," + r);
           if (crop) col = (crop.stage >= CROP_MAX_STAGE) ? "#ffd11a" : "#43a047";
           mc.fillStyle = col;
@@ -144,6 +158,16 @@ class HUD {
       this._mmRev = w.revision;
     }
     ctx.drawImage(this._mmCanvas, 0, 0); // blit lop o (xoa luon cham frame truoc)
+
+    // Khung camera: phan ban do dang hien tren man hinh (giup dinh huong khi map rong).
+    ctx.strokeStyle = "rgba(255,255,255,0.55)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(
+      Math.round(game.camX / TILE_SIZE * s) + 0.5,
+      Math.round(game.camY / TILE_SIZE * s) + 0.5,
+      Math.round(GAME_WIDTH / TILE_SIZE * s) - 1,
+      Math.round(GAME_HEIGHT / TILE_SIZE * s) - 1
+    );
 
     // Cham nguoi choi nhap nhay.
     if (Math.floor(performance.now() / 380) % 2 === 0) {

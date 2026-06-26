@@ -98,11 +98,9 @@ class Player {
     this.vx = Player.approach(this.vx, targetVx, rate);
     this.vy = Player.approach(this.vy, targetVy, rate);
 
-    // 5) Di chuyển + giữ trong màn hình.
+    // 5) Di chuyển. Giữ trong biên / chuyển sang khu kế (đi quá mép) do Game xử lý.
     this.x += this.vx * dt;
     this.y += this.vy * dt;
-    this.x = Math.max(0, Math.min(GAME_WIDTH - this.width, this.x));
-    this.y = Math.max(0, Math.min(GAME_HEIGHT - this.height, this.y));
 
     // 6) Hoạt ảnh đi bộ.
     this.moving = (Math.abs(this.vx) + Math.abs(this.vy)) > 5;

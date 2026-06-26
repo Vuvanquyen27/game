@@ -36,13 +36,19 @@ class Game {
 
     this.input = new Input();
     this.world = new World();
-    this.player = new Player(GAME_WIDTH / 2 - 6, GAME_HEIGHT / 2 - 8, {
+
+    // Camera (goc tren-trai khung nhin trong toa do the gioi). Bam theo nhan vat.
+    this.camX = 0;
+    this.camY = 0;
+
+    // Nhan vat bat dau gan giua the gioi (vung co, de di moi huong).
+    this.player = new Player(WORLD_WIDTH / 2 - 6, WORLD_HEIGHT / 2 - 8, {
       spritePath: this.character.sprite, // nhan vat nguoi choi da chon (undefined -> player.png)
     });
 
     // NPC hiep si dung trong nong trai (trang tri, chua tuong tac).
     // Khong goi update -> dung yen.
-    this.npc = new Player(48, 44, { spritePath: "sprites/knight.png" });
+    this.npc = new Player(WORLD_WIDTH / 2 - 100, WORLD_HEIGHT / 2 - 40, { spritePath: "sprites/knight.png" });
     this.npc.facing = "down";
 
     this.beans = 0;                 // so Dau Than da thu hoach
@@ -53,18 +59,29 @@ class Game {
     this._punchCd = 0;             // hoi chieu dam (giay)
     this.powerUp = false;          // 4.1 Bung khi (hao quang, tang Suc Danh, hao KI)
     this.auraTimer = 0;            // bung phat hao quang ban dau
-    this.dummy = {                  // Moc Nhan: dam de roi Tiem Nang
-      x: 248, y: 40, w: 14, h: 22,
+    this.dummy = {                  // Moc Nhan: dam de roi Tiem Nang (chi o khu nha)
+      x: WORLD_WIDTH / 2 + 70, y: WORLD_HEIGHT / 2 - 60, w: 14, h: 22,
       hp: 30, maxHp: 30, flash: 0, knock: 0, broken: false, respawnT: 0,
     };
+
+    this._fade = 0;                 // hieu ung mo den khi chuyen khu (1 -> 0)
 
     // HUD (DOM) — cap nhat moi khung hinh.
     this.hud = new HUD(this);
     this.player.onReady = () => this.hud.drawPortrait();
     this.hud.drawPortrait();
+
+    // Doi khu (di toi mep ban do) -> cap nhat ten khu tren minimap + bao + hieu ung mo.
+    this.world.onZoneChange = (w) => {
+      this.hud.setZoneName(w.zoneName);
+      this.hud.say("KHU VỰC", "Đã tới " + w.zoneName + ". Đi tiếp tới mép bản đồ để sang khu khác.");
+      this._fade = 1;
+    };
+    this.hud.setZoneName(this.world.zoneName); // ten khu khoi dau (Dong Co)
+
     this.hud.say("HỆ THỐNG",
       "Chào mừng " + this.hud.label(this.character.name) +
-      " đến Saiyan Valley! E: cuốc/gieo/thu hoạch, R: tưới nước, Shift: chạy.");
+      " đến Saiyan Valley! E: cuốc/gieo/thu hoạch, R: tưới, Shift: chạy. Đi tới MÉP bản đồ để khám phá khu mới!");
 
     this._loop = this._loop.bind(this);
   }
@@ -107,8 +124,11 @@ class Game {
 
   update(dt) {
     this.player.update(dt, this.input);
+    this._handleZoneEdges();     // di qua mep -> sang khu ke (hoac chan lai neu la bien)
     this.world.update(dt);
     this._handleFarming();
+
+    if (this._fade > 0) this._fade = Math.max(0, this._fade - dt / 0.3); // mo den nhat dan
 
     // KI: bùng khí hao mạnh > chạy hao > đứng yên hồi.
     if (this.powerUp) {
@@ -135,6 +155,43 @@ class Game {
     else if (p.facing === "right") dc = 1;
     return { c: Math.floor(cx / TILE_SIZE) + dc, r: Math.floor(cy / TILE_SIZE) + dr };
   }
+
+  /** Dang o khu nha (Dong Co)? -> noi co NPC hiep si va Moc Nhan tap luyen. */
+  _isHome() { return this.world.zx === 0 && this.world.zy === 0; }
+
+  /**
+   * Di toi mep ban do: neu co khu ke ben cung huong -> sang khu do (hien ra o
+   * mep doi dien); neu khong -> mep la tuong, ket nhan vat trong bien.
+   */
+  _handleZoneEdges() {
+    const p = this.player, w = this.world;
+    const cx = p.x + p.width / 2, cy = p.y + p.height / 2;
+    let dir = null;
+    if (cx < 0) dir = "left";
+    else if (cx > WORLD_WIDTH) dir = "right";
+    else if (cy < 0) dir = "up";
+    else if (cy > WORLD_HEIGHT) dir = "down";
+
+    if (dir) {
+      const nx = w.zx + (dir === "left" ? -1 : dir === "right" ? 1 : 0);
+      const ny = w.zy + (dir === "up" ? -1 : dir === "down" ? 1 : 0);
+      if (w.hasZone(nx, ny)) {
+        w.loadZone(nx, ny); // doi map (onZoneChange lo hieu ung mo + ten khu)
+        // Hien ra o mep DOI DIEN, giu vi tri theo truc vuong goc.
+        if (dir === "left") { p.x = WORLD_WIDTH - p.width - 1; p.y = this._clampY(p.y); }
+        else if (dir === "right") { p.x = 1; p.y = this._clampY(p.y); }
+        else if (dir === "up") { p.y = WORLD_HEIGHT - p.height - 1; p.x = this._clampX(p.x); }
+        else { p.y = 1; p.x = this._clampX(p.x); }
+        return;
+      }
+    }
+    // Khong co khu ke -> bien la tuong.
+    p.x = this._clampX(p.x);
+    p.y = this._clampY(p.y);
+  }
+
+  _clampX(x) { return Math.max(0, Math.min(WORLD_WIDTH - this.player.width, x)); }
+  _clampY(y) { return Math.max(0, Math.min(WORLD_HEIGHT - this.player.height, y)); }
 
   /** Xu ly canh tac: E = cuoc/gieo/thu hoach, R = tuoi. Bao ket qua qua hop thoai. */
   _handleFarming() {
@@ -236,10 +293,10 @@ class Game {
       this.hud.say("KHAI PHÁ", "Đá quá cứng! Cần Sức Đánh ≥ " + ROCK_HARDNESS + " (bùng khí G hoặc lên cấp).");
     }
 
-    // Cận chiến với Mộc Nhân.
+    // Cận chiến với Mộc Nhân (chỉ ở khu nhà).
     const ax = cx + dx * 14 - 7, ay = cy + dy * 14 - 7;
     const dm = this.dummy;
-    if (!dm.broken && ax < dm.x + dm.w && ax + 14 > dm.x && ay < dm.y + dm.h && ay + 14 > dm.y) {
+    if (this._isHome() && !dm.broken && ax < dm.x + dm.w && ax + 14 > dm.x && ay < dm.y + dm.h && ay + 14 > dm.y) {
       dm.hp -= pw;
       dm.flash = 0.12;
       dm.knock = dx * 3;
@@ -297,6 +354,7 @@ class Game {
 
   /** Vẽ Mộc Nhân (cọc gỗ + bia) + thanh máu nhỏ khi đã bị đánh. */
   _drawDummy(ctx) {
+    if (!this._isHome()) return; // Moc Nhan chi co o khu nha
     const dm = this.dummy;
     if (dm.broken) {
       ctx.fillStyle = "rgba(0,0,0,0.16)";
@@ -332,8 +390,23 @@ class Game {
     }
   }
 
+  /** Camera bam theo nhan vat, ket trong bien the gioi (lam tron -> pixel sac net). */
+  _updateCamera() {
+    const p = this.player;
+    let cx = Math.round(p.x + p.width / 2 - GAME_WIDTH / 2);
+    let cy = Math.round(p.y + p.height / 2 - GAME_HEIGHT / 2);
+    this.camX = Math.max(0, Math.min(WORLD_WIDTH - GAME_WIDTH, cx));
+    this.camY = Math.max(0, Math.min(WORLD_HEIGHT - GAME_HEIGHT, cy));
+  }
+
   render() {
     const ctx = this.ctx;
+
+    // Camera bam theo nhan vat; doi he toa do sang "the gioi" (tat ca ve ben trong
+    // dung toa do the gioi, camera lo phan dang nhin).
+    this._updateCamera();
+    ctx.save();
+    ctx.translate(-this.camX, -this.camY);
 
     // Ban do + cay trong.
     this.world.render(ctx);
@@ -350,12 +423,21 @@ class Game {
     this._drawAura(ctx);
 
     // Nhan vat + NPC: ve theo do sau (chan thap hon ve sau -> noi tren).
-    const actors = [this.player, this.npc];
+    // NPC hiep si chi xuat hien o khu nha.
+    const actors = this._isHome() ? [this.player, this.npc] : [this.player];
     actors.sort((a, b) => (a.y + a.height) - (b.y + b.height));
     for (const a of actors) a.render(ctx);
 
     // Chuong luc ve tren cung.
     this._drawEffects(ctx);
+
+    ctx.restore();
+
+    // Mo den khi chuyen khu (ve trong toa do man hinh, phu toan canvas).
+    if (this._fade > 0) {
+      ctx.fillStyle = "rgba(0,0,0," + Math.min(1, this._fade) + ")";
+      ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+    }
 
     // Cap nhat HUD (DOM) — thanh mau/KI, Dau Than, minimap...
     this.hud.update(this);
