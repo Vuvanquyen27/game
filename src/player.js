@@ -22,6 +22,8 @@ class Player {
 
     // Màu trang phục do người chơi chọn ở màn "Tạo nhân vật".
     this.outfitColor = options.outfitColor || "#ff7b00";
+    // Có tô màu trang phục lên sprite không. NPC để false -> giữ màu gốc của ảnh.
+    this.useTint = options.tint !== false;
 
     // --- Tốc độ & gia tốc ---
     this.walkSpeed = 70;   // px/giây khi đi thường
@@ -61,9 +63,16 @@ class Player {
     this._buildTint();
   }
 
+  /** Đổi sprite nhân vật lúc đang chạy (dùng ở màn chọn nhân vật). */
+  setSprite(path) {
+    this.spriteLoaded = false;
+    this._tinted = null;
+    this.sprite.src = path; // onload đã gắn ở constructor -> tự build tint + gọi onReady
+  }
+
   /** Tạo phiên bản sprite được tô màu trang phục (giữ nguyên độ sáng/tối của ảnh). */
   _buildTint() {
-    if (!this.spriteLoaded) { this._tinted = null; return; }
+    if (!this.spriteLoaded || !this.useTint) { this._tinted = null; return; }
     const w = this.sprite.width, h = this.sprite.height;
     const cv = document.createElement("canvas");
     cv.width = w; cv.height = h;
@@ -135,6 +144,10 @@ class Player {
   render(ctx) {
     // Nhún 1px ở khung 1 & 3 khi đang đi.
     const bob = (this.moving && (this.animFrame === 1 || this.animFrame === 3)) ? -1 : 0;
+
+    // Bóng đổ dưới chân (tạo chiều sâu) — vẽ trước thân, không nhún theo.
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillRect(Math.round(this.x) + 2, Math.round(this.y) + this.height - 2, this.width - 4, 2);
 
     // Có ảnh -> vẽ ảnh (đã tô màu trang phục); chưa có -> vẽ khối pixel tạm.
     if (this.spriteLoaded) {

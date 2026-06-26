@@ -1,12 +1,12 @@
 "use strict";
 
-// === Cấu hình độ phân giải nội bộ (pixel art) ===
+// === Cau hinh do phan giai noi bo (pixel art) ===
 const GAME_WIDTH = 320;
 const GAME_HEIGHT = 180;
 
 /**
- * Lớp Game: vòng lặp game (fixed timestep) + điều phối các hệ thống
- * (input, world/nông trại, player).
+ * Lop Game: vong lap game (fixed timestep) + dieu phoi cac he thong
+ * (input, world/nong trai, player) va cap nhat HUD (DOM).
  */
 class Game {
   constructor(canvas, character) {
@@ -16,8 +16,11 @@ class Game {
     this.ctx = canvas.getContext("2d");
     this.ctx.imageSmoothingEnabled = false;
 
-    // Nhân vật do người chơi tạo ở màn "Tạo nhân vật" (tên + màu trang phục).
+    // Nhan vat do nguoi choi tao (ten + mau trang phuc).
     this.character = character || { name: "Khach", outfitColor: "#ff7b00" };
+
+    // Chi so nhan vat (HP/KI hien thi tren HUD; phuc vu Pha 3 chien dau sau nay).
+    this.stats = { hp: 100, maxHp: 100, ki: 100, maxKi: 100, level: 1 };
 
     this.fixedDelta = 1 / 60;
     this._accumulator = 0;
@@ -32,10 +35,24 @@ class Game {
     this.world = new World();
     this.player = new Player(GAME_WIDTH / 2 - 6, GAME_HEIGHT / 2 - 8, {
       outfitColor: this.character.outfitColor,
+      spritePath: this.character.sprite, // nhan vat nguoi choi da chon (undefined -> player.png)
     });
 
-    this.beans = 0;                 // số Đậu Thần đã thu hoạch
-    this._faced = { c: 0, r: 0 };   // ô đang nhắm tới (trước mặt nhân vật)
+    // NPC hiep si dung trong nong trai (trang tri, chua tuong tac).
+    // tint:false -> giu mau goc cua knight.png. Khong goi update -> dung yen.
+    this.npc = new Player(48, 44, { spritePath: "sprites/knight.png", tint: false });
+    this.npc.facing = "down";
+
+    this.beans = 0;                 // so Dau Than da thu hoach
+    this._faced = { c: 0, r: 0 };   // o dang nham toi (truoc mat nhan vat)
+
+    // HUD (DOM) — cap nhat moi khung hinh.
+    this.hud = new HUD(this);
+    this.player.onReady = () => this.hud.drawPortrait();
+    this.hud.drawPortrait();
+    this.hud.say("HỆ THỐNG",
+      "Chào mừng " + this.hud.label(this.character.name) +
+      " đến Saiyan Valley! E: cuốc/gieo/thu hoạch, R: tưới nước, Shift: chạy.");
 
     this._loop = this._loop.bind(this);
   }
@@ -45,7 +62,7 @@ class Game {
     this._running = true;
     this._lastTime = performance.now();
     requestAnimationFrame(this._loop);
-    console.log("[Game] Vòng lặp đã khởi động.");
+    console.log("[Game] Vong lap da khoi dong.");
   }
 
   stop() { this._running = false; }
@@ -80,9 +97,16 @@ class Game {
     this.player.update(dt, this.input);
     this.world.update(dt);
     this._handleFarming();
+
+    // KI: chay (Shift) khi di chuyen thi tieu hao; dung lai thi hoi dan.
+    if (this.player.isRunning && this.player.moving) {
+      this.stats.ki = Math.max(0, this.stats.ki - 28 * dt);
+    } else {
+      this.stats.ki = Math.min(this.stats.maxKi, this.stats.ki + 16 * dt);
+    }
   }
 
-  /** Tính ô ngay trước mặt nhân vật (theo hướng quay). */
+  /** Tinh o ngay truoc mat nhan vat (theo huong quay). */
   _facedTile() {
     const p = this.player;
     const cx = p.x + p.width / 2;
@@ -95,43 +119,46 @@ class Game {
     return { c: Math.floor(cx / TILE_SIZE) + dc, r: Math.floor(cy / TILE_SIZE) + dr };
   }
 
-  /** Xử lý canh tác: E = cuốc/gieo/thu hoạch, R = tưới. */
+  /** Xu ly canh tac: E = cuoc/gieo/thu hoach, R = tuoi. Bao ket qua qua hop thoai. */
   _handleFarming() {
     this._faced = this._facedTile();
 
     if (this.input.wasPressed("KeyE")) {
       const result = this.world.interact(this._faced.c, this._faced.r);
-      if (result === "harvested") {
+      if (result === "tilled") {
+        this.hud.say("NÔNG TRẠI", "Đã cuốc đất thành ruộng trồng.");
+      } else if (result === "planted") {
+        this.hud.say("NÔNG TRẠI", "Đã gieo hạt Đậu Thần. Nhớ tưới nước (R)!");
+      } else if (result === "harvested") {
         this.beans++;
-        console.log("[Game] Thu hoach Dau Than! Tong:", this.beans);
+        this.hud.say("NÔNG TRẠI", "Thu hoạch 1 Đậu Thần! Tổng: " + this.beans);
       }
     }
 
     if (this.input.wasPressed("KeyR")) {
-      this.world.waterAt(this._faced.c, this._faced.r);
+      if (this.world.waterAt(this._faced.c, this._faced.r)) {
+        this.hud.say("NÔNG TRẠI", "Đã tưới nước cho cây.");
+      }
     }
   }
 
   render() {
     const ctx = this.ctx;
 
-    // Bản đồ + cây trồng.
+    // Ban do + cay trong.
     this.world.render(ctx);
 
-    // Ô đang nhắm (nơi công cụ tác dụng).
+    // O dang nham (noi cong cu tac dung).
     ctx.strokeStyle = "rgba(255,255,255,0.6)";
     ctx.lineWidth = 1;
     ctx.strokeRect(this._faced.c * TILE_SIZE + 0.5, this._faced.r * TILE_SIZE + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
 
-    // Nhân vật.
-    this.player.render(ctx);
+    // Nhan vat + NPC: ve theo do sau (chan thap hon ve sau -> noi tren).
+    const actors = [this.player, this.npc];
+    actors.sort((a, b) => (a.y + a.height) - (b.y + b.height));
+    for (const a of actors) a.render(ctx);
 
-    // HUD (dùng chữ không dấu cho dễ đọc ở cỡ 8px).
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "8px monospace";
-    ctx.fillText("NV: " + this.character.name, 4, 10);
-    ctx.fillText("Dau Than: " + this.beans, 4, 20);
-    ctx.fillText("FPS:" + this._fps, GAME_WIDTH - 40, 10);
-    ctx.fillText("E: cuoc/gieo/thu hoach   R: tuoi nuoc", 4, GAME_HEIGHT - 5);
+    // Cap nhat HUD (DOM) — thanh mau/KI, Dau Than, minimap...
+    this.hud.update(this);
   }
 }

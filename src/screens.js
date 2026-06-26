@@ -11,9 +11,17 @@ class ScreenManager {
   constructor(canvas) {
     this.canvas = canvas;
     this.auth = new Auth();
+    this.auth.ensureDemoAccount(); // tài khoản demo: admin / 1234
     this.username = null;
     this.game = null;
     this.mode = "login"; // "login" | "register"
+
+    // Danh sách nhân vật (sprite) chọn được khi tạo nhân vật.
+    this.characters = [
+      { id: "hero",   name: "Anh Hùng", sprite: "sprites/player.png" },
+      { id: "knight", name: "Hiệp Sĩ",  sprite: "sprites/knight.png" },
+    ];
+    this.selectedChar = this.characters[0];
 
     // Bảng màu trang phục để chọn khi tạo nhân vật.
     this.outfits = [
@@ -26,13 +34,20 @@ class ScreenManager {
     this.selectedOutfit = this.outfits[0];
 
     this._cacheDom();
+    this._buildCharSwatches();
     this._buildSwatches();
     this._bindAuth();
     this._bindCharCreate();
 
+    // Cảnh nền động cho màn hình tiêu đề (chỉ chạy khi đang ở màn đăng nhập).
+    this.titleFX = new TitleFX(this.titleCanvas);
+
     // Nhân vật xem trước (preview) cho màn tạo nhân vật.
     // Đặt vị trí để sprite 32x32 lọt trọn trong canvas 32x40.
-    this._previewPlayer = new Player(10, 20, { outfitColor: this.selectedOutfit.color });
+    this._previewPlayer = new Player(10, 20, {
+      outfitColor: this.selectedOutfit.color,
+      spritePath: this.selectedChar.sprite,
+    });
     this._previewPlayer.onReady = () => this._renderPreview();
   }
 
@@ -49,8 +64,10 @@ class ScreenManager {
 
   // ---------- Lưu tham chiếu DOM ----------
   _cacheDom() {
+    this.elConsole = document.getElementById("game-console");
     this.elAuth = document.getElementById("auth-screen");
     this.elChar = document.getElementById("char-screen");
+    this.titleCanvas = document.getElementById("title-bg");
 
     this.tabLogin = document.getElementById("tab-login");
     this.tabRegister = document.getElementById("tab-register");
@@ -64,6 +81,7 @@ class ScreenManager {
 
     this.elPreview = document.getElementById("char-preview");
     this.elCharName = document.getElementById("char-name");
+    this.elCharSwatches = document.getElementById("char-swatches");
     this.elSwatches = document.getElementById("outfit-swatches");
     this.charMsg = document.getElementById("char-msg");
     this.btnCharStart = document.getElementById("char-start");
@@ -113,6 +131,20 @@ class ScreenManager {
   _authMsg(text) { this.authMsg.textContent = text || ""; }
 
   // ---------- Màn tạo nhân vật ----------
+  /** Tạo các ô chọn nhân vật (thumbnail sprite). */
+  _buildCharSwatches() {
+    this.characters.forEach((ch) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "char-swatch";
+      b.dataset.id = ch.id;
+      b.title = ch.name;
+      b.style.backgroundImage = 'url("' + ch.sprite + '")';
+      b.addEventListener("click", () => this._selectChar(ch));
+      this.elCharSwatches.appendChild(b);
+    });
+  }
+
   _buildSwatches() {
     this.outfits.forEach((o) => {
       const b = document.createElement("button");
@@ -135,12 +167,27 @@ class ScreenManager {
     const saved = this.auth.getCharacter(this.username);
     this.elCharName.value = (saved && saved.name) ? saved.name : this.username;
 
+    const character = saved ? this.characters.find((c) => c.id === saved.charId) : null;
+    this._selectChar(character || this.characters[0]);
+
     const outfit = saved ? this.outfits.find((o) => o.color === saved.outfitColor) : null;
     this._selectOutfit(outfit || this.outfits[0]);
 
     this._charMsg("");
     this._showScreen(this.elChar);
     this._renderPreview();
+  }
+
+  _selectChar(ch) {
+    this.selectedChar = ch;
+    // Tô đậm viền ô nhân vật đang chọn.
+    this.elCharSwatches.querySelectorAll(".char-swatch").forEach((b) => {
+      b.classList.toggle("selected", b.dataset.id === ch.id);
+    });
+    if (this._previewPlayer) {
+      this._previewPlayer.setSprite(ch.sprite); // nạp xong sẽ tự gọi _renderPreview qua onReady
+      this._renderPreview();
+    }
   }
 
   _selectOutfit(outfit) {
@@ -172,10 +219,14 @@ class ScreenManager {
       name,
       outfitColor: this.selectedOutfit.color,
       outfitId: this.selectedOutfit.id,
+      charId: this.selectedChar.id,
+      sprite: this.selectedChar.sprite,
     };
     this.auth.saveCharacter(this.username, character);
 
     this._hideAll();
+    this.titleFX.stop();
+    this.elConsole.classList.remove("hidden");
     this.game = new Game(this.canvas, character);
     this.game.start();
   }
@@ -193,7 +244,10 @@ class ScreenManager {
   // ---------- Tiện ích hiển thị ----------
   _showScreen(el) {
     this._hideAll();
+    this.elConsole.classList.add("hidden");
     el.classList.remove("hidden");
+    if (el === this.elAuth) this.titleFX.start();
+    else this.titleFX.stop();
   }
   _hideAll() {
     this.elAuth.classList.add("hidden");

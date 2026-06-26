@@ -49,6 +49,17 @@ class Auth {
   /** Tên đăng nhập dùng làm khóa (không phân biệt hoa/thường). */
   _id(username) { return (username || "").trim().toLowerCase(); }
 
+  /**
+   * Tạo sẵn tài khoản demo để vào game nhanh khi thử nghiệm.
+   * Chỉ tạo nếu chưa tồn tại, nên không ghi đè tài khoản người chơi đã đăng ký.
+   */
+  ensureDemoAccount(username = "admin", password = "1234") {
+    const accounts = this._loadAccounts();
+    if (accounts[this._id(username)]) return;
+    accounts[this._id(username)] = { username, pass: this._hash(password) };
+    this._saveAccounts(accounts);
+  }
+
   /** Đăng ký tài khoản mới. Trả về { ok, error? }. */
   register(username, password) {
     const name = (username || "").trim();
