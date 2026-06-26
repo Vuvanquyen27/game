@@ -54,7 +54,8 @@ class Player {
       if (this.onReady) this.onReady();
     };
     this.sprite.onerror = () => { this.spriteLoaded = false; };
-    this.sprite.src = options.spritePath || "sprites/player.png";
+    this._spritePath = options.spritePath || "sprites/player.png";
+    this.sprite.src = this._spritePath;
   }
 
   /** Đổi màu trang phục lúc đang chạy (dùng ở màn tạo nhân vật). */
@@ -65,6 +66,12 @@ class Player {
 
   /** Đổi sprite nhân vật lúc đang chạy (dùng ở màn chọn nhân vật). */
   setSprite(path) {
+    if (path === this._spritePath) { // cùng ảnh -> không nạp lại (tránh onload không kích hoạt lại)
+      this._buildTint();
+      if (this.onReady) this.onReady();
+      return;
+    }
+    this._spritePath = path;
     this.spriteLoaded = false;
     this._tinted = null;
     this.sprite.src = path; // onload đã gắn ở constructor -> tự build tint + gọi onReady
