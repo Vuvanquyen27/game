@@ -20,22 +20,15 @@ class ScreenManager {
     this.characters = [
       { id: "hero",   name: "Anh Hùng", sprite: "sprites/player.png" },
       { id: "knight", name: "Hiệp Sĩ",  sprite: "sprites/knight.png" },
+      { id: "king",   name: "Vua",       sprite: "sprites/king.png" },
+      { id: "ninja",  name: "Ninja",     sprite: "sprites/ninja.png" },
+      { id: "mage",   name: "Phù Thủy",  sprite: "sprites/mage.png" },
+      { id: "archer", name: "Cung Thủ",  sprite: "sprites/archer.png" },
     ];
     this.selectedChar = this.characters[0];
 
-    // Bảng màu trang phục để chọn khi tạo nhân vật.
-    this.outfits = [
-      { id: "orange", name: "Cam (Songoku)", color: "#ff7b00" },
-      { id: "blue",   name: "Xanh dương",    color: "#1e88e5" },
-      { id: "red",    name: "Đỏ",            color: "#e53935" },
-      { id: "purple", name: "Tím",           color: "#8e24aa" },
-      { id: "green",  name: "Xanh lá",       color: "#43a047" },
-    ];
-    this.selectedOutfit = this.outfits[0];
-
     this._cacheDom();
     this._buildCharSwatches();
-    this._buildSwatches();
     this._bindAuth();
     this._bindCharCreate();
 
@@ -45,7 +38,6 @@ class ScreenManager {
     // Nhân vật xem trước (preview) cho màn tạo nhân vật.
     // Đặt vị trí để sprite 32x32 lọt trọn trong canvas 32x40.
     this._previewPlayer = new Player(10, 20, {
-      outfitColor: this.selectedOutfit.color,
       spritePath: this.selectedChar.sprite,
     });
     this._previewPlayer.onReady = () => this._renderPreview();
@@ -82,7 +74,6 @@ class ScreenManager {
     this.elPreview = document.getElementById("char-preview");
     this.elCharName = document.getElementById("char-name");
     this.elCharSwatches = document.getElementById("char-swatches");
-    this.elSwatches = document.getElementById("outfit-swatches");
     this.charMsg = document.getElementById("char-msg");
     this.btnCharStart = document.getElementById("char-start");
     this.btnCharBack = document.getElementById("char-back");
@@ -145,19 +136,6 @@ class ScreenManager {
     });
   }
 
-  _buildSwatches() {
-    this.outfits.forEach((o) => {
-      const b = document.createElement("button");
-      b.type = "button";
-      b.className = "swatch";
-      b.dataset.id = o.id;
-      b.style.background = o.color;
-      b.title = o.name;
-      b.addEventListener("click", () => this._selectOutfit(o));
-      this.elSwatches.appendChild(b);
-    });
-  }
-
   _bindCharCreate() {
     this.btnCharStart.addEventListener("click", () => this._startGame());
     this.btnCharBack.addEventListener("click", () => this._logout());
@@ -169,9 +147,6 @@ class ScreenManager {
 
     const character = saved ? this.characters.find((c) => c.id === saved.charId) : null;
     this._selectChar(character || this.characters[0]);
-
-    const outfit = saved ? this.outfits.find((o) => o.color === saved.outfitColor) : null;
-    this._selectOutfit(outfit || this.outfits[0]);
 
     this._charMsg("");
     this._showScreen(this.elChar);
@@ -186,18 +161,6 @@ class ScreenManager {
     });
     if (this._previewPlayer) {
       this._previewPlayer.setSprite(ch.sprite); // nạp xong sẽ tự gọi _renderPreview qua onReady
-      this._renderPreview();
-    }
-  }
-
-  _selectOutfit(outfit) {
-    this.selectedOutfit = outfit;
-    // Tô đậm viền ô màu đang chọn.
-    this.elSwatches.querySelectorAll(".swatch").forEach((b) => {
-      b.classList.toggle("selected", b.dataset.id === outfit.id);
-    });
-    if (this._previewPlayer) {
-      this._previewPlayer.setOutfit(outfit.color);
       this._renderPreview();
     }
   }
@@ -217,8 +180,6 @@ class ScreenManager {
 
     const character = {
       name,
-      outfitColor: this.selectedOutfit.color,
-      outfitId: this.selectedOutfit.id,
       charId: this.selectedChar.id,
       sprite: this.selectedChar.sprite,
     };

@@ -21,13 +21,16 @@
       <div class="win stats">
         <div class="portrait"><canvas id="portrait" width="32" height="32"></canvas></div>
         <div class="statinfo">
-          <div class="nameline"><span id="hud-name">ARIN</span><span class="lv" id="hud-lv">LV 1</span></div>
+          <div class="nameline"><span id="hud-name">ARIN</span><span class="lv" id="hud-lv">LV 1</span><span class="lv pow" id="hud-pow">SĐ 10</span></div>
           <div class="stline"><span class="lab hpl">HP</span>
             <div class="bar"><div id="hpfill" class="bar-fill hp"></div></div>
             <span id="hptext" class="num">100/100</span></div>
           <div class="stline"><span class="lab kil">KI</span>
             <div class="bar"><div id="kifill" class="bar-fill ki"></div></div>
             <span id="kitext" class="num">100/100</span></div>
+          <div class="stline"><span class="lab tnl">TN</span>
+            <div class="bar"><div id="tnfill" class="bar-fill tn"></div></div>
+            <span id="tntext" class="num">0/5</span></div>
           <div class="gold"><span class="bean"></span><span id="beantext">0</span> ĐẬU THẦN</div>
         </div>
       </div>
@@ -40,7 +43,7 @@
         <div class="mm-title">BẢN ĐỒ</div>
         <canvas id="minimap" width="40" height="24"></canvas>
       </div>
-      <div class="hint"><span class="key">E</span> CUỐC/GIEO/THU HOẠCH &nbsp; <span class="key">R</span> TƯỚI &nbsp; <span class="key">SHIFT</span> CHẠY</div>
+      <div class="hint"><span class="key">E</span> CUỐC/GIEO/THU HOẠCH &nbsp; <span class="key">R</span> TƯỚI &nbsp; <span class="key">F</span> ĂN ĐẬU &nbsp; <span class="key">J</span> ĐẤM &nbsp; <span class="key">G</span> BÙNG KHÍ &nbsp; <span class="key">SHIFT</span> CHẠY</div>
     </div>
 
     <!-- Phía dưới: hộp thoại + nút lệnh -->
@@ -51,6 +54,7 @@
         <span id="dlgcursor" class="dlg-cursor"></span>
       </div>
       <div class="cmds">
+        <button type="button" class="btn" data-cmd="eat"><span class="ico"></span>ĂN ĐẬU</button>
         <button type="button" class="btn" data-cmd="bag"><span class="ico"></span>TÚI ĐỒ</button>
         <button type="button" class="btn" data-cmd="map"><span class="ico"></span>BẢN ĐỒ</button>
         <button type="button" class="btn" data-cmd="char"><span class="ico"></span>NHÂN VẬT</button>
@@ -99,8 +103,6 @@
           </label>
           <p class="field-label">NHÂN VẬT</p>
           <div id="char-swatches" class="swatches"></div>
-          <p class="field-label">TRANG PHỤC</p>
-          <div id="outfit-swatches" class="swatches"></div>
         </div>
       </div>
       <p id="char-msg" class="msg"></p>

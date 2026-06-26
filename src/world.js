@@ -4,6 +4,8 @@
 const TILE_SIZE = 16;   // mỗi ô 16x16 px
 const TILE_GRASS = 0;   // đất cỏ
 const TILE_SOIL = 1;    // đất cày
+const TILE_ROCK = 2;    // đất đá cứng (cần Sức Đánh cao để khai phá)
+const ROCK_HARDNESS = 14; // Sức Đánh tối thiểu để đập vỡ đá
 
 // === Cấu hình cây trồng (Đậu Thần) ===
 const CROP_MAX_STAGE = 3;     // 0 = mầm ... 3 = chín
@@ -27,6 +29,11 @@ class World {
       const row = [];
       for (let c = 0; c < this.cols; c++) row.push(TILE_GRASS);
       this.tiles.push(row);
+    }
+
+    // Mảnh đất đá cứng ở góc dưới-phải: cần Sức Đánh cao để khai phá (mở rộng nông trại).
+    for (let r = 7; r < this.rows; r++) {
+      for (let c = 16; c < this.cols; c++) this.tiles[r][c] = TILE_ROCK;
     }
 
     this.crops = new Map();
@@ -64,6 +71,15 @@ class World {
   tillAt(c, r) {
     if (this.getTile(c, r) === TILE_GRASS) { this.setTile(c, r, TILE_SOIL); this._bump(); return true; }
     return false;
+  }
+
+  /** 4.2 Đập đá: cần Sức Đánh đủ mạnh. Trả về "broken" | "tooHard" | "none". */
+  breakRock(c, r, power) {
+    if (this.getTile(c, r) !== TILE_ROCK) return "none";
+    if (power < ROCK_HARDNESS) return "tooHard";
+    this.setTile(c, r, TILE_GRASS); // đá vỡ -> đất cỏ trồng được
+    this._bump();
+    return "broken";
   }
 
   /** 2.2 Gieo hạt: chỉ trên đất cày còn trống. */
@@ -139,7 +155,9 @@ class World {
     for (let r = 0; r < this.rows; r++) {
       for (let c = 0; c < this.cols; c++) {
         const x = c * TILE_SIZE, y = r * TILE_SIZE;
-        if (this.tiles[r][c] === TILE_SOIL) this._drawSoil(ctx, x, y, c, r);
+        const t = this.tiles[r][c];
+        if (t === TILE_SOIL) this._drawSoil(ctx, x, y, c, r);
+        else if (t === TILE_ROCK) this._drawRock(ctx, x, y, c, r);
         else this._drawGrass(ctx, x, y, c, r);
       }
     }
@@ -178,6 +196,14 @@ class World {
       ctx.fillStyle = this._rnd(c, r, 10) > 0.5 ? "#f2d24e" : "#e8e6f0";
       ctx.fillRect(x + (this._rnd(c, r, 8) * 11 | 0) + 2, y + (this._rnd(c, r, 9) * 10 | 0) + 3, 2, 2);
     }
+  }
+
+  _drawRock(ctx, x, y, c, r) {
+    ctx.fillStyle = "#6f6a78"; ctx.fillRect(x, y, TILE_SIZE, TILE_SIZE);     // nền đá
+    ctx.fillStyle = "#565260"; ctx.fillRect(x, y + 11, TILE_SIZE, 5);        // chân tối
+    ctx.fillStyle = "#8a8694"; ctx.fillRect(x + 3, y + 3, 6, 5); ctx.fillRect(x + 9, y + 6, 4, 4); // tảng sáng
+    ctx.fillStyle = "#a8a4b2"; ctx.fillRect(x + 4, y + 4, 2, 2);             // đốm sáng
+    if (this._rnd(c, r, 21) > 0.4) { ctx.fillStyle = "#3f3c47"; ctx.fillRect(x + (this._rnd(c, r, 22) * 11 | 0) + 2, y + 2, 1, 7); } // khe nứt
   }
 
   _drawSoil(ctx, x, y, c, r) {

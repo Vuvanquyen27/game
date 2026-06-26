@@ -19,6 +19,9 @@ class HUD {
     this.elKi    = document.getElementById("kifill");
     this.elKiT   = document.getElementById("kitext");
     this.elBean  = document.getElementById("beantext");
+    this.elPow   = document.getElementById("hud-pow");
+    this.elTn    = document.getElementById("tnfill");
+    this.elTnT   = document.getElementById("tntext");
     this.elDName = document.getElementById("dlgname");
     this.elDText = document.getElementById("dlgtext");
     this.elDCur  = document.getElementById("dlgcursor");
@@ -85,13 +88,16 @@ class HUD {
 
   _onCmd(cmd) {
     const g = this.game, s = g.stats;
-    if (cmd === "bag") {
+    if (cmd === "eat") {
+      g.eatBean();
+    } else if (cmd === "bag") {
       this.say("TÚI ĐỒ", "Đậu Thần x" + g.beans + "  ·  Cuốc  ·  Bình tưới  ·  Hạt giống.");
     } else if (cmd === "map") {
       this.say("BẢN ĐỒ", "Nông trại Saiyan Valley. Cuốc đất (E) để mở rộng vùng trồng trọt.");
     } else if (cmd === "char") {
-      this.say("NHÂN VẬT", this.label(g.character.name) + "  ·  LV" + s.level +
-        "  ·  HP " + Math.round(s.hp) + "/" + s.maxHp + "  KI " + Math.round(s.ki) + "/" + s.maxKi);
+      this.say("NHÂN VẬT", this.label(g.character.name) + "  ·  LV" + s.level + "  ·  SĐ " + s.power +
+        "  ·  HP " + Math.round(s.hp) + "/" + s.maxHp + "  KI " + Math.round(s.ki) + "/" + s.maxKi +
+        "  ·  Tiềm Năng " + s.potential + "/" + s.potentialMax);
     }
   }
 
@@ -104,6 +110,11 @@ class HUD {
     if (hpW !== this._p.hp) { this.elHp.style.width = hpW + "%"; this.elHpT.textContent = Math.round(s.hp) + "/" + s.maxHp; this._p.hp = hpW; }
     if (kiW !== this._p.ki) { this.elKi.style.width = kiW + "%"; this.elKiT.textContent = Math.round(s.ki) + "/" + s.maxKi; this._p.ki = kiW; }
     if (game.beans !== this._p.beans) { this.elBean.textContent = game.beans; this._p.beans = game.beans; }
+
+    const tnW = Math.round(s.potential / s.potentialMax * 100);
+    if (tnW !== this._p.tn) { this.elTn.style.width = tnW + "%"; this.elTnT.textContent = s.potential + "/" + s.potentialMax; this._p.tn = tnW; }
+    const pow = "SĐ " + (game.powerUp ? Math.round(s.power * 1.5) + "!" : s.power);
+    if (pow !== this._p.pow) { this.elPow.textContent = pow; this._p.pow = pow; }
 
     const nm = this.label(game.character.name);
     if (nm !== this._p.name) { this.elName.textContent = nm; this._p.name = nm; }
@@ -122,7 +133,8 @@ class HUD {
       const mc = this._mmCacheCtx;
       for (let r = 0; r < w.rows; r++) {
         for (let c = 0; c < w.cols; c++) {
-          let col = (w.tiles[r][c] === TILE_SOIL) ? "#6b4a2b" : (((c + r) % 2) ? "#447540" : "#4a7c45");
+          const t = w.tiles[r][c];
+          let col = (t === TILE_SOIL) ? "#6b4a2b" : (t === TILE_ROCK) ? "#6f6a78" : (((c + r) % 2) ? "#447540" : "#4a7c45");
           const crop = w.crops.get(c + "," + r);
           if (crop) col = (crop.stage >= CROP_MAX_STAGE) ? "#ffd11a" : "#43a047";
           mc.fillStyle = col;
@@ -142,19 +154,19 @@ class HUD {
     }
   }
 
-  /** Ve chan dung tu sprite nhan vat (da to mau trang phuc). */
+  /** Ve chan dung tu sprite nhan vat. */
   drawPortrait() {
     const p = this.game.player, ctx = this.pctx;
     ctx.clearRect(0, 0, 32, 32);
     ctx.fillStyle = "#0e1838";
     ctx.fillRect(0, 0, 32, 32);
 
-    const img = p._tinted || (p.spriteLoaded ? p.sprite : null);
+    const img = p.spriteLoaded ? p.sprite : null;
     if (img) {
       ctx.drawImage(img, 0, 0, 32, 32, 0, 0, 32, 32);
     } else {
-      // Chua co sprite -> ve khoi tam theo mau trang phuc.
-      ctx.fillStyle = p.outfitColor; ctx.fillRect(10, 15, 12, 10);
+      // Chua co sprite -> ve khoi tam.
+      ctx.fillStyle = "#ff7b00"; ctx.fillRect(10, 15, 12, 10);
       ctx.fillStyle = "#f1c592";    ctx.fillRect(11, 6, 10, 9);
       ctx.fillStyle = "#5c3a1e";    ctx.fillRect(10, 4, 12, 4);
     }

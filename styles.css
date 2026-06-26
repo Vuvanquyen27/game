@@ -97,7 +97,8 @@ body::before{
 }
 .stline{ display:flex; align-items:center; gap:7px; }
 .lab{ font-family:var(--pixel-hj); font-size:12px; width:20px; font-weight:700; }
-.lab.hpl{ color:var(--hp); } .lab.kil{ color:var(--ki); }
+.lab.hpl{ color:var(--hp); } .lab.kil{ color:var(--ki); } .lab.tnl{ color:var(--gold); }
+.nameline .lv.pow{ background:var(--ki); color:var(--ink); box-shadow:0 0 0 2px var(--ink), inset -1px -1px 0 var(--ki-dk); }
 .num{ font-family:var(--pixel-hj); font-size:11px; color:var(--dim); white-space:nowrap; }
 .bar{
   position:relative; flex:1; height:13px; background:var(--bar-bg);
@@ -106,6 +107,7 @@ body::before{
 .bar-fill{ position:relative; height:100%; width:100%; transition:width .12s linear; }
 .bar-fill.hp{ background:var(--hp); }
 .bar-fill.ki{ background:var(--ki); }
+.bar-fill.tn{ background:var(--gold); }
 .bar-fill::before{ content:""; position:absolute; top:0; left:0; right:0; height:2px; background:rgba(255,255,255,.4); }
 .bar-fill::after{ content:""; position:absolute; inset:0;
   background:repeating-linear-gradient(90deg, transparent 0 3px, rgba(0,0,0,.28) 3px 4px); }
@@ -156,6 +158,7 @@ body::before{
 .btn[data-cmd="bag"]  .ico{ background:var(--gold); box-shadow:0 0 0 1px var(--ink), inset 0 4px 0 var(--gold-dk); }
 .btn[data-cmd="map"]  .ico{ background:#5b8c3a; box-shadow:0 0 0 1px var(--ink), inset 4px 0 0 #2f6fb0; }
 .btn[data-cmd="char"] .ico{ background:#f1c592; box-shadow:0 0 0 1px var(--ink), inset 0 -4px 0 #3f8b46; }
+.btn[data-cmd="eat"]  .ico{ background:var(--bean); box-shadow:0 0 0 1px var(--ink), inset 1px 1px 0 var(--bean-lt), inset -2px -2px 0 var(--bean-dk); }
 .btn:hover{ background:var(--btn-hover); transform:translate(-1px,-1px);
   box-shadow:inset 2px 2px 0 var(--btn-lt), inset -2px -2px 0 var(--btn-dk), 0 0 0 2px var(--ink), 0 5px 0 2px rgba(0,0,0,.45); }
 .btn:active, .btn.pressed{ transform:translate(0,3px);
@@ -272,9 +275,6 @@ input::placeholder{ color:#5b6aa0; }
 .char-fields{ flex:1; }
 .field-label{ margin:4px 0 8px; font-size:12px; color:var(--dim); letter-spacing:.3px; font-weight:500; }
 .swatches{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
-.swatch{ width:30px; height:30px; border:none; cursor:pointer; padding:0;
-  box-shadow:0 0 0 2px var(--ink), inset 2px 2px 0 rgba(255,255,255,.25), inset -2px -2px 0 rgba(0,0,0,.4); }
-.swatch.selected{ box-shadow:0 0 0 2px var(--ink), 0 0 0 4px var(--gold); }
 
 /* Ô chọn NHÂN VẬT — hiện thumbnail sprite (pixel art) */
 .char-swatch{ width:44px; height:44px; border:none; cursor:pointer; padding:0;

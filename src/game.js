@@ -16,11 +16,14 @@ class Game {
     this.ctx = canvas.getContext("2d");
     this.ctx.imageSmoothingEnabled = false;
 
-    // Nhan vat do nguoi choi tao (ten + mau trang phuc).
-    this.character = character || { name: "Khach", outfitColor: "#ff7b00" };
+    // Nhan vat do nguoi choi tao (ten + sprite da chon).
+    this.character = character || { name: "Khach" };
 
-    // Chi so nhan vat (HP/KI hien thi tren HUD; phuc vu Pha 3 chien dau sau nay).
-    this.stats = { hp: 100, maxHp: 100, ki: 100, maxKi: 100, level: 1 };
+    // Chi so nhan vat. power = Suc Danh, potential = Tiem Nang (an Dau Than de tang).
+    this.stats = {
+      hp: 100, maxHp: 100, ki: 100, maxKi: 100,
+      level: 1, power: 10, potential: 0, potentialMax: 5,
+    };
 
     this.fixedDelta = 1 / 60;
     this._accumulator = 0;
@@ -34,17 +37,26 @@ class Game {
     this.input = new Input();
     this.world = new World();
     this.player = new Player(GAME_WIDTH / 2 - 6, GAME_HEIGHT / 2 - 8, {
-      outfitColor: this.character.outfitColor,
       spritePath: this.character.sprite, // nhan vat nguoi choi da chon (undefined -> player.png)
     });
 
     // NPC hiep si dung trong nong trai (trang tri, chua tuong tac).
-    // tint:false -> giu mau goc cua knight.png. Khong goi update -> dung yen.
-    this.npc = new Player(48, 44, { spritePath: "sprites/knight.png", tint: false });
+    // Khong goi update -> dung yen.
+    this.npc = new Player(48, 44, { spritePath: "sprites/knight.png" });
     this.npc.facing = "down";
 
     this.beans = 0;                 // so Dau Than da thu hoach
     this._faced = { c: 0, r: 0 };   // o dang nham toi (truoc mat nhan vat)
+
+    // Chien dau (Pha 3.3 / 3.4).
+    this.effects = [];              // chuong luc tam thoi (hieu ung dam)
+    this._punchCd = 0;             // hoi chieu dam (giay)
+    this.powerUp = false;          // 4.1 Bung khi (hao quang, tang Suc Danh, hao KI)
+    this.auraTimer = 0;            // bung phat hao quang ban dau
+    this.dummy = {                  // Moc Nhan: dam de roi Tiem Nang
+      x: 248, y: 40, w: 14, h: 22,
+      hp: 30, maxHp: 30, flash: 0, knock: 0, broken: false, respawnT: 0,
+    };
 
     // HUD (DOM) — cap nhat moi khung hinh.
     this.hud = new HUD(this);
@@ -98,12 +110,17 @@ class Game {
     this.world.update(dt);
     this._handleFarming();
 
-    // KI: chay (Shift) khi di chuyen thi tieu hao; dung lai thi hoi dan.
-    if (this.player.isRunning && this.player.moving) {
+    // KI: bùng khí hao mạnh > chạy hao > đứng yên hồi.
+    if (this.powerUp) {
+      this.stats.ki = Math.max(0, this.stats.ki - 14 * dt);
+      if (this.stats.ki <= 0) { this.powerUp = false; this.hud.say("CẢNH GIỚI", "Hết KI — tắt Bùng Khí."); }
+    } else if (this.player.isRunning && this.player.moving) {
       this.stats.ki = Math.max(0, this.stats.ki - 28 * dt);
     } else {
       this.stats.ki = Math.min(this.stats.maxKi, this.stats.ki + 16 * dt);
     }
+
+    this._updateCombat(dt);
   }
 
   /** Tinh o ngay truoc mat nhan vat (theo huong quay). */
@@ -140,6 +157,179 @@ class Game {
         this.hud.say("NÔNG TRẠI", "Đã tưới nước cho cây.");
       }
     }
+
+    if (this.input.wasPressed("KeyF")) this.eatBean();
+  }
+
+  /**
+   * 3.2 Ăn 1 Đậu Thần: hồi đầy HP/KI và +1 Tiềm Năng.
+   * Đủ Tiềm Năng -> ĐỘT PHÁ lên cấp: tăng máu/khí tối đa + Sức Đánh.
+   */
+  eatBean() {
+    if (this.beans <= 0) {
+      this.hud.say("ĐẬU THẦN", "Chưa có Đậu Thần! Hãy trồng và thu hoạch trước (E).");
+      return;
+    }
+    this.beans--;
+    const s = this.stats;
+    s.hp = s.maxHp;      // Đậu Thần hồi đầy (như senzu)
+    s.ki = s.maxKi;
+
+    if (this.addPotential(1)) {
+      this.hud.say("ĐỘT PHÁ", "Lên cấp " + s.level + "! Sức Đánh tăng lên " + s.power + ", máu & khí mạnh hơn.");
+    } else {
+      this.hud.say("ĐẬU THẦN", "Ăn 1 Đậu Thần — hồi đầy HP/KI. Tiềm Năng " + s.potential + "/" + s.potentialMax + ".");
+    }
+  }
+
+  /** Cộng Tiềm Năng; đủ ngưỡng -> đột phá lên cấp (có thể nhiều cấp). Trả về true nếu lên cấp. */
+  addPotential(n) {
+    const s = this.stats;
+    s.potential += n;
+    let leveled = false;
+    while (s.potential >= s.potentialMax) {
+      s.potential -= s.potentialMax;
+      s.level++;
+      s.maxHp += 20; s.maxKi += 10; s.power += 3;
+      s.hp = s.maxHp; s.ki = s.maxKi;
+      s.potentialMax = s.level * 5;
+      leveled = true;
+    }
+    return leveled;
+  }
+
+  /** Sức Đánh hiệu dụng (x1.5 khi đang bùng khí). */
+  effPower() { return this.powerUp ? Math.round(this.stats.power * 1.5) : this.stats.power; }
+
+  /** 4.1 Bùng khí: bật/tắt trạng thái tăng Sức Đánh (hào quang vàng), hao KI liên tục. */
+  togglePowerUp() {
+    if (this.powerUp) { this.powerUp = false; this.hud.say("CẢNH GIỚI", "Đã tắt Bùng Khí."); return; }
+    if (this.stats.ki < 10) { this.hud.say("CẢNH GIỚI", "Không đủ KI để bùng khí!"); return; }
+    this.powerUp = true;
+    this.auraTimer = 0.6;
+    this.hud.say("CẢNH GIỚI", "BÙNG KHÍ! Hào quang bốc lên, Sức Đánh tăng mạnh — nhưng hao KI liên tục.");
+  }
+
+  /** 3.3 Đấm: tốn KI, bắn chưởng lực; trúng Mộc Nhân gây sát thương; đập được đá cứng (4.2). */
+  punch() {
+    if (this._punchCd > 0) return;
+    const s = this.stats;
+    if (s.ki < 5) { this.hud.say("CHIẾN ĐẤU", "Không đủ KI để đấm! Nghỉ chút hoặc ăn Đậu Thần (F)."); return; }
+    s.ki -= 5;
+    this._punchCd = 0.32;
+
+    const p = this.player;
+    const cx = p.x + p.width / 2, cy = p.y + p.height / 2;
+    const dx = p.facing === "left" ? -1 : p.facing === "right" ? 1 : 0;
+    const dy = p.facing === "up" ? -1 : p.facing === "down" ? 1 : 0;
+    const pw = this.effPower();
+
+    // Chưởng lực bay ra trước mặt (hiệu ứng).
+    this.effects.push({ x: cx + dx * 8, y: cy + dy * 8, vx: dx * 130, vy: dy * 130, t: 0, life: 0.3 });
+
+    // 4.2 Đập đá cứng ở ô trước mặt (cần Sức Đánh đủ cao).
+    const rock = this.world.breakRock(this._faced.c, this._faced.r, pw);
+    if (rock === "broken") {
+      this.effects.push({ x: this._faced.c * TILE_SIZE + 8, y: this._faced.r * TILE_SIZE + 8, vx: 0, vy: 0, t: 0, life: 0.35 });
+      this.hud.say("KHAI PHÁ", "Đập vỡ đá! Mở rộng được đất trồng.");
+    } else if (rock === "tooHard") {
+      this.hud.say("KHAI PHÁ", "Đá quá cứng! Cần Sức Đánh ≥ " + ROCK_HARDNESS + " (bùng khí G hoặc lên cấp).");
+    }
+
+    // Cận chiến với Mộc Nhân.
+    const ax = cx + dx * 14 - 7, ay = cy + dy * 14 - 7;
+    const dm = this.dummy;
+    if (!dm.broken && ax < dm.x + dm.w && ax + 14 > dm.x && ay < dm.y + dm.h && ay + 14 > dm.y) {
+      dm.hp -= pw;
+      dm.flash = 0.12;
+      dm.knock = dx * 3;
+      if (dm.hp <= 0) {
+        dm.hp = 0; dm.broken = true; dm.respawnT = 1.5;
+        if (this.addPotential(3)) this.hud.say("ĐỘT PHÁ", "Phá Mộc Nhân & lên cấp " + s.level + "! Sức Đánh " + s.power + ".");
+        else this.hud.say("LUYỆN TẬP", "Phá Mộc Nhân! Tiềm Năng +3 (" + s.potential + "/" + s.potentialMax + ").");
+      } else {
+        this.hud.say("LUYỆN TẬP", "Đấm trúng Mộc Nhân! Còn " + dm.hp + "/" + dm.maxHp + " máu.");
+      }
+    }
+  }
+
+  /** Cập nhật chiến đấu: phím đấm, hồi chiêu, hiệu ứng, hồi sinh Mộc Nhân. */
+  _updateCombat(dt) {
+    if (this.input.wasPressed("KeyJ")) this.punch();
+    if (this.input.wasPressed("KeyG")) this.togglePowerUp();
+    if (this._punchCd > 0) this._punchCd -= dt;
+    if (this.auraTimer > 0) this.auraTimer -= dt;
+
+    for (const e of this.effects) { e.t += dt; e.x += e.vx * dt; e.y += e.vy * dt; }
+    this.effects = this.effects.filter((e) => e.t < e.life);
+
+    const dm = this.dummy;
+    if (dm.flash > 0) dm.flash -= dt;
+    if (dm.knock !== 0) dm.knock *= 0.8;
+    if (dm.broken) {
+      dm.respawnT -= dt;
+      if (dm.respawnT <= 0) { dm.broken = false; dm.hp = dm.maxHp; }
+    }
+  }
+
+  /** 4.1 Hào quang khi bùng khí (vầng sáng vàng + ngọn lửa bốc lên quanh nhân vật). */
+  _drawAura(ctx) {
+    if (!this.powerUp && this.auraTimer <= 0) return;
+    const p = this.player;
+    const cx = p.x + p.width / 2, by = p.y + p.height;
+    const t = this.world.animTime;
+    const rad = 11 + Math.round(Math.sin(t * 12));
+    ctx.fillStyle = this.auraTimer > 0 ? "rgba(255,225,120,0.30)" : "rgba(255,210,90,0.18)";
+    for (let dy = -rad; dy <= rad; dy++) {
+      const w = Math.floor(Math.sqrt(rad * rad - dy * dy));
+      ctx.fillRect(Math.round(cx - w), Math.round(by - 9 + dy), w * 2 + 1, 1);
+    }
+    ctx.fillStyle = "#ffd23a";
+    for (let i = 0; i < 5; i++) {
+      const ph = t * 16 + i * 1.7;
+      const fx = Math.round(cx - 6 + i * 3 + Math.sin(ph));
+      const fy = Math.round(by - 2 - (Math.floor(ph * 3) % 6));
+      ctx.fillRect(fx, fy, 1, 2);
+    }
+    ctx.fillStyle = "rgba(255,255,200,0.85)";
+    ctx.fillRect(Math.round(cx) - 1, Math.round(by - 14), 2, 2);
+  }
+
+  /** Vẽ Mộc Nhân (cọc gỗ + bia) + thanh máu nhỏ khi đã bị đánh. */
+  _drawDummy(ctx) {
+    const dm = this.dummy;
+    if (dm.broken) {
+      ctx.fillStyle = "rgba(0,0,0,0.16)";
+      ctx.fillRect(dm.x + 2, dm.y + dm.h - 2, dm.w - 4, 2); // bóng mờ (đang hồi sinh)
+      return;
+    }
+    const x = Math.round(dm.x + dm.knock), y = dm.y;
+    ctx.fillStyle = "rgba(0,0,0,0.22)";
+    ctx.fillRect(x + 1, y + dm.h - 2, dm.w - 2, 2);          // bóng
+    ctx.fillStyle = "#6b4a2b"; ctx.fillRect(x + 5, y + 8, 4, dm.h - 8); // thân cột
+    ctx.fillStyle = "#8a5a2b"; ctx.fillRect(x + 2, y + 2, dm.w - 4, 8); // đầu
+    ctx.fillStyle = "#5a3d22"; ctx.fillRect(x + 1, y + 6, dm.w - 2, 2); // tay ngang
+    ctx.fillStyle = "#d24b4b"; ctx.fillRect(x + 5, y + 3, 4, 4);        // bia đỏ
+    ctx.fillStyle = "#f4e7c1"; ctx.fillRect(x + 6, y + 4, 2, 2);        // tâm bia
+    if (dm.flash > 0) { ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.fillRect(x, y, dm.w, dm.h); }
+    if (dm.hp < dm.maxHp) {
+      ctx.fillStyle = "#000"; ctx.fillRect(x, y - 4, dm.w, 3);
+      ctx.fillStyle = "#e2533b"; ctx.fillRect(x, y - 4, Math.round(dm.w * dm.hp / dm.maxHp), 3);
+    }
+  }
+
+  /** Vẽ chưởng lực (đĩa năng lượng nở ra rồi mờ dần). */
+  _drawEffects(ctx) {
+    for (const e of this.effects) {
+      const rad = 2 + (e.t / e.life) * 6;
+      ctx.fillStyle = (e.t / e.life) < 0.5 ? "rgba(174,240,255,0.9)" : "rgba(120,180,230,0.55)";
+      for (let dyy = -rad; dyy <= rad; dyy++) {
+        const w = Math.floor(Math.sqrt(rad * rad - dyy * dyy));
+        ctx.fillRect(Math.round(e.x - w), Math.round(e.y + dyy), w * 2 + 1, 1);
+      }
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.fillRect(Math.round(e.x) - 1, Math.round(e.y) - 1, 2, 2);
+    }
   }
 
   render() {
@@ -153,10 +343,19 @@ class Game {
     ctx.lineWidth = 1;
     ctx.strokeRect(this._faced.c * TILE_SIZE + 0.5, this._faced.r * TILE_SIZE + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
 
+    // Moc Nhan (ve truoc -> nhan vat co the dung de tren).
+    this._drawDummy(ctx);
+
+    // Hao quang bung khi (ve duoi chan, sau lung nhan vat).
+    this._drawAura(ctx);
+
     // Nhan vat + NPC: ve theo do sau (chan thap hon ve sau -> noi tren).
     const actors = [this.player, this.npc];
     actors.sort((a, b) => (a.y + a.height) - (b.y + b.height));
     for (const a of actors) a.render(ctx);
+
+    // Chuong luc ve tren cung.
+    this._drawEffects(ctx);
 
     // Cap nhat HUD (DOM) — thanh mau/KI, Dau Than, minimap...
     this.hud.update(this);

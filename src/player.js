@@ -9,9 +9,8 @@ class Player {
   /**
    * @param {number} x
    * @param {number} y
-   * @param {{spritePath?: string, outfitColor?: string}} [options]
-   *        spritePath  : đường dẫn ảnh (mặc định sprites/player.png)
-   *        outfitColor : màu trang phục (tô lên sprite + dùng cho khối tạm)
+   * @param {{spritePath?: string}} [options]
+   *        spritePath : đường dẫn ảnh (mặc định sprites/player.png)
    */
   constructor(x, y, options) {
     options = options || {};
@@ -19,11 +18,6 @@ class Player {
     this.y = y;
     this.width = 12;   // hộp va chạm (logic), không phải kích thước ảnh
     this.height = 16;
-
-    // Màu trang phục do người chơi chọn ở màn "Tạo nhân vật".
-    this.outfitColor = options.outfitColor || "#ff7b00";
-    // Có tô màu trang phục lên sprite không. NPC để false -> giữ màu gốc của ảnh.
-    this.useTint = options.tint !== false;
 
     // --- Tốc độ & gia tốc ---
     this.walkSpeed = 70;   // px/giây khi đi thường
@@ -46,11 +40,9 @@ class Player {
     // Tự nạp ảnh; nạp xong thì spriteLoaded = true. Lỗi/chưa có -> vẽ khối tạm.
     this.sprite = new Image();
     this.spriteLoaded = false;
-    this._tinted = null;          // bản sprite đã tô màu trang phục
     this.onReady = null;          // callback khi nạp ảnh xong (cho khung xem trước)
     this.sprite.onload = () => {
       this.spriteLoaded = true;
-      this._buildTint();
       if (this.onReady) this.onReady();
     };
     this.sprite.onerror = () => { this.spriteLoaded = false; };
@@ -58,40 +50,15 @@ class Player {
     this.sprite.src = this._spritePath;
   }
 
-  /** Đổi màu trang phục lúc đang chạy (dùng ở màn tạo nhân vật). */
-  setOutfit(color) {
-    this.outfitColor = color || "#ff7b00";
-    this._buildTint();
-  }
-
   /** Đổi sprite nhân vật lúc đang chạy (dùng ở màn chọn nhân vật). */
   setSprite(path) {
     if (path === this._spritePath) { // cùng ảnh -> không nạp lại (tránh onload không kích hoạt lại)
-      this._buildTint();
       if (this.onReady) this.onReady();
       return;
     }
     this._spritePath = path;
     this.spriteLoaded = false;
-    this._tinted = null;
-    this.sprite.src = path; // onload đã gắn ở constructor -> tự build tint + gọi onReady
-  }
-
-  /** Tạo phiên bản sprite được tô màu trang phục (giữ nguyên độ sáng/tối của ảnh). */
-  _buildTint() {
-    if (!this.spriteLoaded || !this.useTint) { this._tinted = null; return; }
-    const w = this.sprite.width, h = this.sprite.height;
-    const cv = document.createElement("canvas");
-    cv.width = w; cv.height = h;
-    const c = cv.getContext("2d");
-    c.imageSmoothingEnabled = false;
-    c.drawImage(this.sprite, 0, 0);
-    // "source-atop": chỉ tô màu lên những pixel đã có hình (giữ nền trong suốt).
-    c.globalCompositeOperation = "source-atop";
-    c.globalAlpha = 0.5;
-    c.fillStyle = this.outfitColor;
-    c.fillRect(0, 0, w, h);
-    this._tinted = cv;
+    this.sprite.src = path; // onload đã gắn ở constructor -> tự gọi onReady
   }
 
   /** Đưa giá trị current tiến dần về target, mỗi lần tối đa maxDelta. */
@@ -158,7 +125,7 @@ class Player {
 
     // Có ảnh -> vẽ ảnh (đã tô màu trang phục); chưa có -> vẽ khối pixel tạm.
     if (this.spriteLoaded) {
-      const img = this._tinted || this.sprite;
+      const img = this.sprite;
       const iw = img.width;
       const ih = img.height;
       // Căn giữa ngang theo hộp va chạm; đáy ảnh = đáy hộp (chân chạm đất).
@@ -192,8 +159,8 @@ class Player {
     ctx.fillRect(px + 2, py + 13 + (step === 0 ? 0 : 1), 3, 3);
     ctx.fillRect(px + this.width - 5, py + 13 + (step === 1 ? 0 : 1), 3, 3);
 
-    // Thân (áo theo màu trang phục đã chọn)
-    ctx.fillStyle = this.outfitColor;
+    // Thân (áo màu cam mặc định cho khối tạm)
+    ctx.fillStyle = "#ff7b00";
     ctx.fillRect(px, topY + 8, this.width, 5);
 
     // Đầu (màu da)
