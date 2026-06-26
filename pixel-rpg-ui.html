@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>AURELIA QUEST — Pixel RPG UI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+<style>
+  /* ====== BANG MAU RETRO (limited palette) ====== */
+  :root{
+    --ink:      #0c0a13;   /* vien toi nhat */
+    --cream:    #e7d9b0;   /* vien sang kieu cua so RPG */
+    --win:      #15224a;   /* nen cua so xanh duong toi */
+    --win-top:  #1d2f63;
+    --panel:    #221831;
+    --panel-lt: #3a2c52;
+    --gold:     #f2c14e;
+    --gold-dk:  #9c7a22;
+    --gold-lt:  #fce7a0;
+    --text:     #f4ecd6;
+    --dim:      #9fb0d8;
+    --hp:       #e2533b;  --hp-dk:#8e2c1d;
+    --mp:       #3f7ad6;  --mp-dk:#1f3f86;
+    --bar-bg:   #1a1228;
+    --btn:      #3a2c52;  --btn-lt:#6a558e; --btn-dk:#1c1430; --btn-hover:#4b3a6b;
+    --scan:     rgba(0,0,0,.16);
+    --pixel:    'Press Start 2P','Courier New',monospace;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{
+    font-family:var(--pixel);
+    color:var(--text);
+    background:
+      radial-gradient(circle at 50% 22%, #1c1638 0%, #0c0814 70%, #07050d 100%);
+    display:flex; align-items:center; justify-content:center;
+    padding:18px;
+    -webkit-font-smoothing:none;
+    image-rendering:pixelated;
+    overflow-x:hidden;
+  }
+  /* Lop khong khi: hat dither lap lai cho co texture */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:.5;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 2px, transparent 2px 4px),
+      repeating-linear-gradient(90deg, rgba(0,0,0,.10) 0 2px, transparent 2px 4px);
+  }
+
+  /* ====== KHUNG MAY (console) ====== */
+  .console{
+    position:relative; z-index:1;
+    width:min(680px,95vw);
+    display:flex; flex-direction:column; gap:12px;
+    padding:14px;
+    background:linear-gradient(#221831,#191124);
+    border:3px solid var(--cream);
+    box-shadow:
+      0 0 0 3px var(--ink),
+      0 0 0 6px #2c2140,
+      0 0 0 9px var(--ink),
+      0 14px 0 9px rgba(0,0,0,.45),
+      inset 2px 2px 0 rgba(255,255,255,.07),
+      inset -3px -3px 0 rgba(0,0,0,.5);
+  }
+
+  .titlebar{
+    text-align:center; font-size:14px; letter-spacing:3px;
+    color:var(--gold);
+    padding:8px 6px 10px;
+    text-shadow:0 2px 0 var(--gold-dk), 0 3px 0 var(--ink);
+  }
+  .titlebar .deco{ color:var(--hp); }
+
+  /* Cua so chung kieu RPG (vien kep) */
+  .win{
+    background:linear-gradient(var(--win-top),var(--win));
+    border:3px solid var(--cream);
+    box-shadow:0 0 0 3px var(--ink),
+               inset 2px 2px 0 rgba(255,255,255,.10),
+               inset -2px -2px 0 rgba(0,0,0,.45);
+  }
+
+  /* ====== HUD TREN: thong tin nhan vat ====== */
+  .hud{ display:flex; }
+  .stats{ flex:1; display:flex; gap:12px; padding:10px 12px; align-items:center; }
+  .portrait{
+    width:54px; height:54px; flex:0 0 auto;
+    background:#0e1838;
+    border:2px solid var(--cream);
+    box-shadow:0 0 0 2px var(--ink), inset 0 0 0 2px #0a1230;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #portrait{ width:48px; height:48px; image-rendering:pixelated; }
+
+  .statinfo{ flex:1; min-width:0; display:flex; flex-direction:column; gap:7px; }
+  .nameline{ display:flex; align-items:baseline; gap:8px; font-size:11px; }
+  .nameline .lv{
+    font-size:8px; color:var(--ink); background:var(--gold);
+    padding:3px 5px; box-shadow:0 0 0 2px var(--ink), inset -1px -1px 0 var(--gold-dk);
+  }
+  .stline{ display:flex; align-items:center; gap:7px; }
+  .lab{ font-size:8px; width:18px; }
+  .lab.hpl{ color:var(--hp); } .lab.mpl{ color:var(--mp); }
+  .num{ font-size:7px; color:var(--dim); white-space:nowrap; }
+
+  .bar{
+    position:relative; flex:1; height:13px; background:var(--bar-bg);
+    box-shadow:inset 2px 2px 0 rgba(0,0,0,.55), 0 0 0 2px var(--ink);
+    overflow:hidden;
+  }
+  .bar-fill{ position:relative; height:100%; width:50%; transition:width .25s steps(8); }
+  .bar-fill.hp{ background:var(--hp); }
+  .bar-fill.mp{ background:var(--mp); }
+  .bar-fill::before{ content:""; position:absolute; top:0; left:0; right:0; height:2px; background:rgba(255,255,255,.4); }
+  .bar-fill::after{ content:""; position:absolute; inset:0;
+    background:repeating-linear-gradient(90deg, transparent 0 3px, rgba(0,0,0,.28) 3px 4px); }
+
+  .gold{ display:flex; align-items:center; gap:7px; font-size:9px; color:var(--gold); margin-top:1px; }
+  .coin{ width:11px; height:11px; background:var(--gold);
+    box-shadow:inset 1px 1px 0 var(--gold-lt), inset -2px -2px 0 var(--gold-dk), 0 0 0 2px var(--ink); }
+
+  /* ====== SAN KHAU: ban do + minimap ====== */
+  .stage{ position:relative; line-height:0; border:3px solid var(--cream);
+    box-shadow:0 0 0 3px var(--ink), inset 0 0 0 3px #060a18; background:#060a18; }
+  #map{ width:100%; height:auto; aspect-ratio:4/3; display:block;
+    image-rendering:pixelated; position:relative; z-index:1; }
+  /* CRT: vach quet + bong vien */
+  .stage::after{ content:""; position:absolute; inset:0; z-index:2; pointer-events:none;
+    background:repeating-linear-gradient(0deg, var(--scan) 0 2px, transparent 2px 4px); }
+  .stage::before{ content:""; position:absolute; inset:0; z-index:2; pointer-events:none;
+    box-shadow:inset 0 0 38px 8px rgba(0,0,0,.55); }
+
+  .minimap{ position:absolute; top:8px; right:8px; z-index:3; padding:5px 5px 4px; }
+  .mm-title{ font-size:6px; color:var(--gold); text-align:center; margin-bottom:4px; letter-spacing:1px; }
+  #minimap{ width:96px; height:72px; display:block; image-rendering:pixelated;
+    box-shadow:inset 0 0 0 2px var(--ink); }
+  .hint{ position:absolute; left:8px; bottom:8px; z-index:3; font-size:6px; color:var(--text);
+    background:rgba(8,8,20,.78); padding:5px 7px; box-shadow:0 0 0 2px var(--ink);
+    letter-spacing:1px; }
+  .key{ display:inline-block; background:var(--cream); color:var(--ink); padding:2px 4px; margin:0 1px;
+    box-shadow:0 0 0 1px var(--ink), inset -1px -1px 0 #b3a378; font-size:6px; }
+
+  /* ====== PHIA DUOI: hop thoai + nut lenh ====== */
+  .bottom{ display:flex; gap:12px; align-items:stretch; }
+  .dialog{ flex:1; min-width:0; position:relative; padding:13px 16px 16px; min-height:90px; }
+  .dlg-name{ position:absolute; top:-11px; left:12px; font-size:8px; color:var(--ink);
+    background:var(--gold); padding:4px 8px;
+    box-shadow:0 0 0 2px var(--ink), inset -1px -2px 0 var(--gold-dk); letter-spacing:1px; }
+  .dlg-text{ font-size:9px; line-height:1.85; color:var(--text); margin-top:4px;
+    min-height:48px; word-break:break-word; }
+  .dlg-cursor{ position:absolute; right:12px; bottom:10px; width:0; height:0;
+    border-left:6px solid transparent; border-right:6px solid transparent; border-top:8px solid var(--gold);
+    opacity:0; }
+  .dlg-cursor.show{ animation:blink .7s steps(1) infinite; }
+  @keyframes blink{ 0%,50%{opacity:1;} 51%,100%{opacity:0;} }
+
+  .cmds{ flex:0 0 auto; display:flex; flex-direction:column; gap:9px; width:128px; }
+  .btn{
+    font-family:var(--pixel); font-size:8px; letter-spacing:1px; color:var(--text);
+    background:var(--btn); border:none; padding:13px 8px; cursor:pointer; text-align:left;
+    display:flex; align-items:center; gap:8px;
+    box-shadow:inset 2px 2px 0 var(--btn-lt), inset -2px -2px 0 var(--btn-dk), 0 0 0 2px var(--ink), 0 3px 0 2px rgba(0,0,0,.4);
+    transition:transform .04s steps(1), background .08s, box-shadow .04s steps(1);
+  }
+  .btn .ico{ width:12px; height:12px; flex:0 0 auto; box-shadow:0 0 0 1px var(--ink); }
+  .btn[data-cmd="bag"]  .ico{ background:var(--gold); box-shadow:0 0 0 1px var(--ink), inset 0 4px 0 var(--gold-dk); }
+  .btn[data-cmd="map"]  .ico{ background:#5b8c3a; box-shadow:0 0 0 1px var(--ink), inset 4px 0 0 #2f6fb0; }
+  .btn[data-cmd="char"] .ico{ background:#f1c592; box-shadow:0 0 0 1px var(--ink), inset 0 -4px 0 #3f8b46; }
+  .btn:hover{ background:var(--btn-hover); transform:translate(-1px,-1px);
+    box-shadow:inset 2px 2px 0 var(--btn-lt), inset -2px -2px 0 var(--btn-dk), 0 0 0 2px var(--ink), 0 5px 0 2px rgba(0,0,0,.45); }
+  .btn:active, .btn.pressed{ transform:translate(0,3px);
+    box-shadow:inset 2px 2px 0 var(--btn-dk), inset -2px -2px 0 var(--btn-lt), 0 0 0 2px var(--ink), 0 0 0 2px rgba(0,0,0,.4); }
+  .btn:focus{ outline:none; }
+
+  /* ====== Hoat anh vao man (staggered) ====== */
+  .hud, .stage, .bottom{ animation:rise .35s steps(6) both; }
+  .stage{ animation-delay:.08s; }
+  .bottom{ animation-delay:.16s; }
+  @keyframes rise{ from{ transform:translateY(10px); opacity:0; } to{ transform:translateY(0); opacity:1; } }
+
+  @media (max-width:560px){
+    .bottom{ flex-direction:column; }
+    .cmds{ width:100%; flex-direction:row; }
+    .cmds .btn{ flex:1; justify-content:center; }
+    #minimap{ width:72px; height:54px; }
+  }
+</style>
+</head>
+<body>
+  <main class="console" id="console">
+    <div class="titlebar"><span class="deco">*</span> AURELIA QUEST <span class="deco">*</span></div>
+
+    <!-- HUD: thong tin nhan vat -->
+    <div class="hud">
+      <div class="win stats">
+        <div class="portrait"><canvas id="portrait" width="24" height="24"></canvas></div>
+        <div class="statinfo">
+          <div class="nameline"><span>ARIN</span><span class="lv">LV 5</span></div>
+          <div class="stline"><span class="lab hpl">HP</span>
+            <div class="bar"><div id="hpfill" class="bar-fill hp"></div></div>
+            <span id="hptext" class="num">78/100</span></div>
+          <div class="stline"><span class="lab mpl">MP</span>
+            <div class="bar"><div id="mpfill" class="bar-fill mp"></div></div>
+            <span id="mptext" class="num">32/45</span></div>
+          <div class="gold"><span class="coin"></span><span id="goldtext">120</span> VANG</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- San khau: ban do + minimap -->
+    <div class="stage">
+      <canvas id="map" width="256" height="192"></canvas>
+      <div class="win minimap">
+        <div class="mm-title">BAN DO</div>
+        <canvas id="minimap" width="64" height="48"></canvas>
+      </div>
+      <div class="hint"><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> / MUI TEN: DI CHUYEN</div>
+    </div>
+
+    <!-- Phia duoi: hop thoai + nut lenh -->
+    <div class="bottom">
+      <div class="win dialog">
+        <div id="dlgname" class="dlg-name">HE THONG</div>
+        <div id="dlgtext" class="dlg-text"></div>
+        <span id="dlgcursor" class="dlg-cursor"></span>
+      </div>
+      <div class="cmds">
+        <button type="button" class="btn" data-cmd="bag"><span class="ico"></span>TUI DO</button>
+        <button type="button" class="btn" data-cmd="map"><span class="ico"></span>BAN DO</button>
+        <button type="button" class="btn" data-cmd="char"><span class="ico"></span>NHAN VAT</button>
+      </div>
+    </div>
+  </main>
+
+<script>
+"use strict";
+/* =========================================================================
+   AURELIA QUEST — giao dien RPG pixel art (1 file). Tat ca ve bang canvas
+   o do phan giai thap 256x192 (16x12 o, moi o 16px) roi phong to + pixelated.
+   ========================================================================= */
+
+const COLS = 16, ROWS = 12, TILE = 16;
+
+/* Ban do: moi ky tu = 1 loai o.
+   G co | W nuoc | M nui | F rung | R duong | V lang | C lau dai | K hang | T kho bau */
+const MAP = [
+  "WWWGGGGGFFFGGGMM",
+  "WWGGGGGGGFFGGGMM",
+  "WGGGRRRRGGGGGGMM",
+  "GGGGRGGGRGGGGGKM",
+  "GVVRRGGGRRRRGGMM",
+  "GVVGRGGGGGGRGGMM",
+  "GGGGRGFFFGGRGGGM",
+  "GGGGRGFFFGGRGGGG",
+  "GGGGRRGGGGGRRGTG",
+  "WWGGGGRRCCRRGGGG",
+  "WWWGGGGGCCGGGFFG",
+  "WWWWGGGGGGGGGFGG",
+].map(row => row.split(""));
+
+const BLOCKED = new Set(["W", "M"]); // khong di qua duoc
+
+/* ---- Bang mau cho canvas ---- */
+const C = {
+  grass:"#5b8c3a", grassDk:"#3f6b2a", grassLt:"#74a84a", flower:"#f2d24e", flower2:"#e8e6f0",
+  water:"#2f6fb0", waterDk:"#21528a", waterLt:"#74b3e8",
+  mt:"#7d7a86", mtDk:"#4f4c59", mtLt:"#a8a4b2", snow:"#eef0f6",
+  trunk:"#6b4a2b", canopy:"#2f7a36", canopyDk:"#1f5526", canopyLt:"#49a851",
+  road:"#c2a468", roadDk:"#9c7f4a", roadLt:"#dcc488",
+  wall:"#d7c79c", wallDk:"#a89868", roof:"#b5462f", roofDk:"#7e2f1f", door:"#5a3a22", win:"#3f7ad6",
+  stone:"#9a93a8", stoneDk:"#6a6378", gate:"#2a2333", flag:"#e2533b", pole:"#caa46a",
+  caveDk:"#0c0a13",
+  chest:"#8a5a2b", chestDk:"#5e3c1c", chestLid:"#a8702f", lock:"#f2c14e",
+};
+
+/* PRNG deterministic theo o -> dat chi tiet co dinh (khong nhap nhay) */
+function rnd(c, r, s){
+  let n = (c*374761393 + r*668265263 + s*2654435761) >>> 0;
+  n = ((n ^ (n >>> 13)) * 1274126177) >>> 0;
+  return (n % 1000) / 1000;
+}
+
+const mapCanvas = document.getElementById("map");
+const g = mapCanvas.getContext("2d");
+g.imageSmoothingEnabled = false;
+
+const miniCanvas = document.getElementById("minimap");
+const mg = miniCanvas.getContext("2d");
+mg.imageSmoothingEnabled = false;
+
+/* ---------- VE TUNG LOAI O ---------- */
+function rect(x,y,w,h,col){ g.fillStyle=col; g.fillRect(x,y,w,h); }
+
+function drawGrass(x,y,c,r){
+  rect(x,y,TILE,TILE,C.grass);
+  if (rnd(c,r,1) > .55) rect(x + (rnd(c,r,2)*11|0)+2, y + (rnd(c,r,3)*10|0)+3, 2,1, C.grassDk);
+  if (rnd(c,r,4) > .55) rect(x + (rnd(c,r,5)*12|0)+1, y + (rnd(c,r,6)*11|0)+2, 1,2, C.grassLt);
+  if (rnd(c,r,7) > .88){ // bong hoa
+    const fx = x + (rnd(c,r,8)*11|0)+2, fy = y + (rnd(c,r,9)*10|0)+3;
+    rect(fx,fy,2,2, rnd(c,r,10)>.5 ? C.flower : C.flower2);
+  }
+}
+function drawWater(x,y,c,r,wf){
+  rect(x,y,TILE,TILE,C.water);
+  rect(x,y+4,TILE,1,C.waterDk);
+  rect(x,y+11,TILE,1,C.waterDk);
+  const o = (wf + c*3 + r*5);
+  rect(x + (o%13), y+6, 3,1, C.waterLt);
+  rect(x + ((o+6)%13), y+13, 2,1, C.waterLt);
+}
+function drawMountain(x,y){
+  rect(x,y,TILE,TILE,C.mt);
+  // suon nui sang (tam giac bac thang)
+  rect(x+6,y+3,4,2,C.mtLt); rect(x+4,y+5,6,2,C.mtLt);
+  rect(x+3,y+7,8,2,C.mtLt); rect(x+2,y+9,11,3,C.mtLt);
+  // dinh tuyet
+  rect(x+7,y+2,2,2,C.snow); rect(x+6,y+4,3,1,C.snow);
+  // bong toi chan nui
+  rect(x,y+12,TILE,4,C.mtDk); rect(x+11,y+5,3,7,C.mtDk);
+}
+function drawForest(x,y,c,r){
+  drawGrass(x,y,c,r);
+  rect(x+7,y+10,2,4,C.trunk);
+  rect(x+3,y+4,10,6,C.canopy); rect(x+4,y+2,8,3,C.canopy); rect(x+2,y+6,12,3,C.canopy);
+  rect(x+4,y+4,3,2,C.canopyLt); rect(x+10,y+7,2,3,C.canopyDk);
+  rect(x+2,y+8,2,2,C.canopyDk);
+}
+function drawRoad(x,y,c,r){
+  rect(x,y,TILE,TILE,C.road);
+  rect(x,y,TILE,1,C.roadDk); rect(x,y+TILE-1,TILE,1,C.roadDk);
+  if (rnd(c,r,1)>.4) rect(x+(rnd(c,r,2)*12|0)+2, y+(rnd(c,r,3)*12|0)+2, 2,2, C.roadDk);
+  if (rnd(c,r,4)>.5) rect(x+(rnd(c,r,5)*12|0)+2, y+(rnd(c,r,6)*12|0)+2, 1,1, C.roadLt);
+}
+function drawVillage(x,y,c,r){
+  drawGrass(x,y,c,r);
+  rect(x+3,y+7,11,7,C.wall); rect(x+3,y+13,11,1,C.wallDk);
+  rect(x+2,y+4,13,4,C.roof); rect(x+2,y+7,13,1,C.roofDk);
+  rect(x+8,y-1+1,1,4,C.roofDk);
+  rect(x+7,y+10,4,4,C.door); rect(x+4,y+9,3,3,C.win); rect(x+11,y+9,2,3,C.win);
+}
+function drawCastle(x,y){
+  drawGrass(x,y,0,0);
+  rect(x+1,y+5,14,10,C.stone);
+  // lo chau may (battlements)
+  for (let i=0;i<5;i++){ rect(x+1+i*3, y+3, 2,2, C.stone); }
+  rect(x+1,y+12,14,3,C.stoneDk); rect(x+11,y+5,3,9,C.stoneDk);
+  rect(x+6,y+9,4,6,C.gate);
+  // co tren thap
+  rect(x+8,y,1,5,C.pole); rect(x+9,y,4,3,C.flag);
+}
+function drawCave(x,y){
+  rect(x,y,TILE,TILE,C.mt);
+  rect(x+6,y+3,4,2,C.mtLt); rect(x+4,y+5,8,2,C.mtLt);
+  rect(x,y+12,TILE,4,C.mtDk);
+  rect(x+4,y+8,8,7,C.caveDk); rect(x+5,y+6,6,3,C.caveDk); rect(x+6,y+5,4,2,C.caveDk);
+  rect(x+4,y+7,8,1,C.mtLt);
+}
+function drawChest(x,y,c,r,wf){
+  drawGrass(x,y,c,r);
+  rect(x+3,y+8,10,5,C.chest); rect(x+3,y+12,10,1,C.chestDk);
+  rect(x+2,y+5,12,4,C.chestLid); rect(x+2,y+8,12,1,C.chestDk);
+  rect(x+7,y+5,2,8,C.lock); rect(x+6,y+8,4,2,C.lock);
+  // lap lanh
+  if ((wf>>1)%2===0){ rect(x+1,y+3,1,1,C.flower2); rect(x+13,y+6,1,1,C.flower2); }
+}
+
+function drawTile(code, c, r, wf){
+  const x = c*TILE, y = r*TILE;
+  switch(code){
+    case "W": drawWater(x,y,c,r,wf); break;
+    case "M": drawMountain(x,y); break;
+    case "F": drawForest(x,y,c,r); break;
+    case "R": drawRoad(x,y,c,r); break;
+    case "V": drawVillage(x,y,c,r); break;
+    case "C": drawCastle(x,y); break;
+    case "K": drawCave(x,y); break;
+    case "T": drawChest(x,y,c,r,wf); break;
+    default:  drawGrass(x,y,c,r);
+  }
+}
+
+/* ---------- NHAN VAT ---------- */
+function drawHero(x, baseY, facing, bob){
+  // bong (khong nhun theo nhan vat)
+  g.fillStyle = "rgba(0,0,0,.28)";
+  g.fillRect(x+4, baseY+14, 8, 2);
+
+  const y = baseY + bob;
+  const skin="#f1c592", hair="#5c3a1e", tunic="#3f8b46", tunicDk="#2b6531", boot="#4a3018", eye="#15110f";
+
+  rect2(boot, x+4, y+12, 3,3); rect2(boot, x+9, y+12, 3,3);   // chan
+  rect2(tunic, x+4, y+8, 8,5); rect2(tunicDk, x+4, y+11, 8,1); // than
+  rect2(skin, x+3, y+9, 1,3);  rect2(skin, x+12, y+9, 1,3);    // tay
+  rect2(skin, x+5, y+3, 6,5);                                  // dau
+
+  g.fillStyle = hair;
+  if (facing==="up"){ g.fillRect(x+4,y+2,8,6); }
+  else { g.fillRect(x+4,y+1,8,3); g.fillRect(x+4,y+3,1,2); g.fillRect(x+11,y+3,1,2); }
+
+  g.fillStyle = eye;
+  if (facing==="down"){ g.fillRect(x+6,y+5,1,2); g.fillRect(x+9,y+5,1,2); }
+  else if (facing==="left"){ g.fillRect(x+6,y+5,1,2); }
+  else if (facing==="right"){ g.fillRect(x+9,y+5,1,2); }
+}
+function rect2(col,x,y,w,h){ g.fillStyle=col; g.fillRect(x,y,w,h); }
+
+/* ---------- TRANG THAI GAME ---------- */
+const player = { c:4, r:3, facing:"down", move:null };
+const MOVE_TIME = 0.14;
+let stats = { hp:78, maxhp:100, mp:32, maxmp:45, gold:120 };
+
+const keyDir = { ArrowUp:"up", ArrowDown:"down", ArrowLeft:"left", ArrowRight:"right",
+                 w:"up", s:"down", a:"left", d:"right", W:"up", S:"down", A:"left", D:"right" };
+const held = {};
+
+function walkable(c,r){
+  if (c<0||r<0||c>=COLS||r>=ROWS) return false;
+  return !BLOCKED.has(MAP[r][c]);
+}
+function dirDelta(d){
+  return d==="up"?[0,-1]:d==="down"?[0,1]:d==="left"?[-1,0]:[1,0];
+}
+
+function tryMove(){
+  if (player.move) return;
+  // uu tien phim dang giu (theo thu tu)
+  let dir = null;
+  for (const d of ["up","down","left","right"]) if (held[d]) { dir = d; break; }
+  if (!dir) return;
+  player.facing = dir;
+  const [dc,dr] = dirDelta(dir);
+  const tc = player.c+dc, tr = player.r+dr;
+  if (walkable(tc,tr)){
+    player.move = { fc:player.c, fr:player.r, tc, tr, t:0 };
+  }
+}
+
+function arrive(c,r){
+  const code = MAP[r][c];
+  if (code==="V"){ stats.hp=stats.maxhp; stats.mp=stats.maxmp; refreshStats();
+    say("LANG","Dan lang: Chao mung dung si Arin! Nghi ngoi da hoi phuc HP/MP."); }
+  else if (code==="C"){ say("LAU DAI","Linh gac: Duc vua dang doi ngai trong dien tho."); }
+  else if (code==="K"){ stats.hp=Math.max(0,stats.hp-15); refreshStats();
+    say("HANG DONG","Co thu gi do dong day trong bong toi... (-15 HP)"); }
+  else if (code==="T"){ stats.gold+=50; MAP[r][c]="G"; refreshStats();
+    say("KHO BAU","Ban mo ruong va tim thay 50 VANG sang choi!"); }
+}
+
+/* ---------- HOP THOAI (typewriter) ---------- */
+const dlgNameEl = document.getElementById("dlgname");
+const dlgTextEl = document.getElementById("dlgtext");
+const dlgCurEl  = document.getElementById("dlgcursor");
+let dialog = null;
+const TYPE_SPEED = 26; // ky tu / giay
+
+function say(name, text){
+  dialog = { name, full:text, n:0, t:0, done:false };
+  dlgNameEl.textContent = name;
+  dlgCurEl.classList.remove("show");
+}
+function updateDialog(dt){
+  if (!dialog) return;
+  if (!dialog.done){
+    dialog.t += dt*TYPE_SPEED;
+    dialog.n = Math.min(dialog.full.length, Math.floor(dialog.t));
+    dlgTextEl.textContent = dialog.full.slice(0, dialog.n);
+    if (dialog.n >= dialog.full.length){ dialog.done = true; dlgCurEl.classList.add("show"); }
+  }
+}
+
+/* ---------- HUD ---------- */
+function refreshStats(){
+  document.getElementById("hpfill").style.width = (stats.hp/stats.maxhp*100)+"%";
+  document.getElementById("mpfill").style.width = (stats.mp/stats.maxmp*100)+"%";
+  document.getElementById("hptext").textContent = stats.hp+"/"+stats.maxhp;
+  document.getElementById("mptext").textContent = stats.mp+"/"+stats.maxmp;
+  document.getElementById("goldtext").textContent = stats.gold;
+}
+
+/* ---------- MINIMAP ---------- */
+const MINI = { G:"#5b8c3a", W:"#2f6fb0", M:"#7d7a86", F:"#2f7a36", R:"#c2a468",
+               V:"#b5462f", C:"#9a93a8", K:"#2a2730", T:"#f2c14e" };
+function drawMinimap(wf){
+  const s = 4; // 4px / o -> 64x48
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++){
+    mg.fillStyle = MINI[MAP[r][c]] || "#5b8c3a";
+    mg.fillRect(c*s, r*s, s, s);
+  }
+  if ((wf>>1)%2===0){ // cham nguoi choi nhap nhay
+    mg.fillStyle = "#ff4d4d";
+    mg.fillRect(player.c*s, player.r*s, s, s);
+    mg.fillStyle = "#fff";
+    mg.fillRect(player.c*s+1, player.r*s+1, 2, 2);
+  }
+}
+
+/* ---------- CHAN DUNG (portrait) ---------- */
+function drawPortrait(){
+  const p = document.getElementById("portrait").getContext("2d");
+  p.imageSmoothingEnabled = false;
+  p.clearRect(0,0,24,24);
+  const u=(x,y,w,h,col)=>{ p.fillStyle=col; p.fillRect(x,y,w,h); };
+  u(0,0,24,24,"#0e1838");
+  u(4,16,16,8,"#3f8b46");          // vai/ao
+  u(6,18,2,6,"#2b6531"); u(16,18,2,6,"#2b6531");
+  u(6,5,12,11,"#f1c592");          // mat
+  u(5,2,14,5,"#5c3a1e");           // toc
+  u(5,5,2,4,"#5c3a1e"); u(17,5,2,4,"#5c3a1e");
+  u(9,9,2,2,"#15110f"); u(13,9,2,2,"#15110f"); // mat
+  u(10,13,4,1,"#c98a63");          // mieng
+}
+
+/* ---------- VONG LAP ---------- */
+let waterT = 0, last = performance.now();
+function render(){
+  const wf = Math.floor(waterT*5);
+  for (let r=0;r<ROWS;r++) for (let c=0;c<COLS;c++) drawTile(MAP[r][c], c, r, wf);
+
+  // vi tri nhan vat (noi suy khi dang buoc)
+  let rc = player.c, rr = player.r, bob = 0;
+  if (player.move){
+    const t = player.move.t;
+    rc = player.move.fc + (player.move.tc-player.move.fc)*t;
+    rr = player.move.fr + (player.move.tr-player.move.fr)*t;
+    bob = (Math.floor(t*2)%2===0) ? -1 : 0; // nhun chan khi di
+  }
+  drawHero(Math.round(rc*TILE), Math.round(rr*TILE), player.facing, bob);
+
+  drawMinimap(wf);
+}
+function update(dt){
+  waterT += dt;
+  if (player.move){
+    player.move.t += dt / MOVE_TIME;
+    if (player.move.t >= 1){
+      player.c = player.move.tc; player.r = player.move.tr; player.move = null;
+      arrive(player.c, player.r);
+    }
+  }
+  tryMove();
+  updateDialog(dt);
+}
+function loop(now){
+  let dt = (now - last) / 1000; last = now;
+  if (dt > 0.1) dt = 0.1;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
+/* ---------- DIEU KHIEN ---------- */
+addEventListener("keydown", (e)=>{
+  if (e.key === " " || e.key === "Enter"){
+    if (dialog && !dialog.done){ dialog.n = dialog.full.length; dialog.done = true;
+      dlgTextEl.textContent = dialog.full; dlgCurEl.classList.add("show"); }
+    e.preventDefault(); return;
+  }
+  const d = keyDir[e.key];
+  if (d){ held[d] = true; e.preventDefault(); }
+});
+addEventListener("keyup", (e)=>{ const d = keyDir[e.key]; if (d) held[d] = false; });
+
+/* Nut lenh */
+const MENUS = {
+  bag:  ["TUI DO", "Thuoc hoi mau x3 - Chia khoa cu x1 - Banh mi x2 - Da quy x1."],
+  map:  ["BAN DO", "Vung dat Aurelia: Lang Co Xanh, Lau dai Bac, Hang Vong Am."],
+  char: ["NHAN VAT", "ARIN - Hiep si - LV5 - SUC 12 GIAP 8 NHANH 10 - May man 6."],
+};
+document.querySelectorAll(".btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    const m = MENUS[btn.dataset.cmd];
+    if (m) say(m[0], m[1]);
+    btn.classList.add("pressed");
+    setTimeout(()=>btn.classList.remove("pressed"), 110);
+    btn.blur();
+  });
+});
+
+/* ---------- KHOI DONG ---------- */
+drawPortrait();
+refreshStats();
+say("HE THONG", "Chao mung den voi AURELIA QUEST! Dung WASD hoac phim mui ten de phieu luu. Buoc vao lang, lau dai, hang dong hay ruong bau de xem dieu gi xay ra.");
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>

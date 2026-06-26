@@ -10,7 +10,10 @@ html, body {
 }
 
 #game-wrapper {
-  box-shadow: 0 0 0 2px #333; /* viền nhẹ quanh khung game */
+  position: relative;             /* mốc cho các màn hình phủ lên trên */
+  width: 960px;
+  height: 540px;
+  box-shadow: 0 0 0 2px #333;     /* viền nhẹ quanh khung game */
 }
 
 #game-canvas {
@@ -20,3 +23,166 @@ html, body {
   height: 540px;
   display: block;
 }
+
+/* ====== MÀN HÌNH PHỦ (Đăng nhập / Tạo nhân vật) ====== */
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 50% 30%, #1c2340, #0b0e1a 80%);
+  color: #e8e8f0;
+}
+.screen.hidden { display: none; }
+
+.panel {
+  width: 360px;
+  padding: 28px 32px;
+  background: rgba(10, 12, 24, 0.85);
+  border: 2px solid #ff7b00;
+  border-radius: 10px;
+  box-shadow: 0 0 24px rgba(255, 123, 0, 0.35);
+}
+
+.logo {
+  margin: 0 0 18px;
+  text-align: center;
+  font-size: 26px;
+  letter-spacing: 2px;
+  color: #ffcc33;
+  text-shadow: 0 2px 0 #b35a00;
+}
+
+/* Tabs đăng nhập / đăng ký */
+.tabs {
+  display: flex;
+  margin-bottom: 18px;
+  border: 1px solid #3a4060;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.tab {
+  flex: 1;
+  padding: 9px 0;
+  border: none;
+  background: transparent;
+  color: #9aa0c0;
+  font-family: monospace;
+  font-size: 14px;
+  cursor: pointer;
+}
+.tab.active {
+  background: #ff7b00;
+  color: #1a1020;
+  font-weight: bold;
+}
+
+/* Form & ô nhập */
+form label,
+.char-fields label {
+  display: block;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: #aab0d0;
+}
+input[type="text"],
+input[type="password"] {
+  width: 100%;
+  margin-top: 5px;
+  padding: 9px 10px;
+  box-sizing: border-box;
+  background: #11152b;
+  border: 1px solid #3a4060;
+  border-radius: 5px;
+  color: #fff;
+  font-family: monospace;
+  font-size: 14px;
+}
+input:focus {
+  outline: none;
+  border-color: #ff7b00;
+}
+
+/* Nút bấm */
+.btn-primary,
+.btn-secondary {
+  padding: 10px 16px;
+  border: none;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 14px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  cursor: pointer;
+}
+.btn-primary {
+  width: 100%;
+  margin-top: 6px;
+  background: #ff7b00;
+  color: #1a1020;
+}
+.btn-primary:hover { background: #ff9326; }
+.btn-secondary {
+  background: #2a3050;
+  color: #cfd4f0;
+}
+.btn-secondary:hover { background: #353c63; }
+
+/* Dòng thông báo lỗi / nhắc */
+.msg {
+  min-height: 16px;
+  margin: 4px 0 10px;
+  font-size: 12px;
+  color: #ff6b6b;
+}
+
+/* ====== Bố cục màn TẠO NHÂN VẬT ====== */
+.char-layout {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+#char-preview {
+  width: 96px;    /* 32 x 3 */
+  height: 120px;  /* 40 x 3 */
+  image-rendering: pixelated;
+  background: #11152b;
+  border: 1px solid #3a4060;
+  border-radius: 6px;
+}
+.char-fields { flex: 1; }
+.field-label {
+  margin: 4px 0 6px;
+  font-size: 12px;
+  color: #aab0d0;
+}
+
+/* Ô chọn màu trang phục */
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.swatch {
+  width: 30px;
+  height: 30px;
+  border: 2px solid #3a4060;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+}
+.swatch.selected {
+  border-color: #fff;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.7);
+}
+
+.char-actions {
+  display: flex;
+  gap: 10px;
+}
+.char-actions .btn-primary { margin-top: 0; }
+.char-actions .btn-secondary { flex: 0 0 auto; }
+
+.hidden { display: none; }

@@ -9,12 +9,61 @@
 <body>
   <div id="game-wrapper">
     <canvas id="game-canvas"></canvas>
+
+    <!-- ===== Màn hình ĐĂNG NHẬP / ĐĂNG KÝ ===== -->
+    <div id="auth-screen" class="screen">
+      <div class="panel">
+        <h1 class="logo">SAIYAN VALLEY</h1>
+        <div class="tabs">
+          <button id="tab-login" type="button" class="tab active">Đăng nhập</button>
+          <button id="tab-register" type="button" class="tab">Đăng ký</button>
+        </div>
+        <form id="auth-form" autocomplete="off">
+          <label>Tên đăng nhập
+            <input id="auth-username" type="text" maxlength="16" placeholder="Nhập tên..." />
+          </label>
+          <label>Mật khẩu
+            <input id="auth-password" type="password" maxlength="32" placeholder="••••••" />
+          </label>
+          <label id="auth-confirm-row" class="hidden">Nhập lại mật khẩu
+            <input id="auth-confirm" type="password" maxlength="32" placeholder="••••••" />
+          </label>
+          <p id="auth-msg" class="msg"></p>
+          <button id="auth-submit" type="submit" class="btn-primary">ĐĂNG NHẬP</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ===== Màn hình TẠO NHÂN VẬT ===== -->
+    <div id="char-screen" class="screen hidden">
+      <div class="panel">
+        <h1 class="logo">TẠO NHÂN VẬT</h1>
+        <div class="char-layout">
+          <canvas id="char-preview" width="32" height="40"></canvas>
+          <div class="char-fields">
+            <label>Tên nhân vật
+              <input id="char-name" type="text" maxlength="12" placeholder="VD: Goku" />
+            </label>
+            <p class="field-label">Trang phục</p>
+            <div id="outfit-swatches" class="swatches"></div>
+          </div>
+        </div>
+        <p id="char-msg" class="msg"></p>
+        <div class="char-actions">
+          <button id="char-back" type="button" class="btn-secondary">Đăng xuất</button>
+          <button id="char-start" type="button" class="btn-primary">BẮT ĐẦU</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Tải theo thứ tự. Dùng <script> thường (KHÔNG phải module) để double-click mở file vẫn chạy được. -->
   <script src="src/game.js"></script>
   <script src="src/input.js"></script>
   <script src="src/player.js"></script>
+  <script src="src/world.js"></script>
+  <script src="src/auth.js"></script>
+  <script src="src/screens.js"></script>
   <script src="src/main.js"></script>
 </body>
 </html>

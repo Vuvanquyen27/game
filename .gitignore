@@ -29,5 +29,8 @@
 Thumbs.db
 desktop.ini
 
+# JetBrains IDE
+.idea/
+
 # Node (web prototype)
 node_modules/
