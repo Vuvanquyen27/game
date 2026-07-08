@@ -1,0 +1,20 @@
+# YÊU CẦU MÔI TRƯỜNG
+#
+# Máy hiện tại: Windows 11, KHÔNG có Python (chỉ có bản stub từ Microsoft Store),
+# có Node.js v24. Vì vậy toolchain được viết bằng Node.js (không cần cài thêm gói nào).
+#
+# Không cần thư viện bên thứ ba: generate.js/scoring.js/data.js chỉ dùng module lõi của Node
+# (fs, path). Việc thu thập dữ liệu thực hiện qua trình duyệt Chrome thật (Claude in Chrome MCP),
+# không dùng Playwright/Selenium/requests/BeautifulSoup.
+#
+# === Nếu muốn chạy lại bằng Node ===
+#   node >= 18
+#   (không có dependency npm)
+#
+# === Nếu sau này cài Python và muốn port sang Python, các gói tương đương sẽ là: ===
+#   playwright        # điều khiển trình duyệt (thay cho Claude in Chrome)
+#   beautifulsoup4    # (chỉ hữu ích nếu trang trả HTML đầy đủ — Shopee/Lazada render JS nên hạn chế)
+#   pandas            # tổng hợp/lập bảng (tuỳ chọn)
+#
+# LƯU Ý ĐẠO ĐỨC/TUÂN THỦ: chỉ đọc dữ liệu công khai như người dùng bình thường;
+# KHÔNG vượt đăng nhập/CAPTCHA/anti-bot; KHÔNG dùng API nội bộ; KHÔNG bịa số liệu.
