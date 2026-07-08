@@ -1,11 +1,11 @@
 # Threads Affiliate — Nhà Gọn Đồ Xinh (hướng dẫn vận hành)
 
-Hệ thống triển khai tiếp thị liên kết Shopee trên **Threads**, ngách **đồ gia dụng nhỏ mà xịn**. Tái sử dụng 10 sản phẩm + link affiliate đã có từ các kênh trước (Facebook/Instagram/Pinterest). Tài khoản affiliate: `leanjmft63`.
+Hệ thống triển khai tiếp thị liên kết Shopee trên **Threads**, ngách **đồ gia dụng nhỏ mà xịn**. Tái sử dụng 15 sản phẩm + link affiliate đã có từ các kênh trước (Facebook/Instagram/Pinterest). Tài khoản affiliate: `leanjmft63`.
 
 ## Các file trong thư mục
 | File | Dùng để làm gì |
 |------|----------------|
-| `products.csv` | Danh sách 10 sản phẩm + link affiliate + đủ trường (giá, đánh giá, vấn đề giải quyết, góc nội dung...). Cột `Chon_test_Threads` = CO là 5 món đang test. |
+| `products.csv` | Danh sách 15 sản phẩm + link affiliate + đủ trường (giá, đánh giá, vấn đề giải quyết, góc nội dung...). Cột `Chon_test_Threads` = CO là 5 món đang test. |
 | `content_calendar.md` | Lịch 7 ngày, ≥2 bài/ngày: hook + thân bài + CTA + comment #1 có link + gợi ý phản hồi + trạng thái. |
 | `comment_opportunities.md` | Cách đi bình luận bài người khác + 20 mẫu bình luận tương tác KHÔNG link + bảng theo dõi cơ hội. |
 | `reply_templates.md` | 10 mẫu trả lời CÓ link (chỉ dùng khi người ta hỏi) + bảng tra link nhanh. |

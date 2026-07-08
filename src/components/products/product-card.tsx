@@ -1,13 +1,12 @@
 import Link from 'next/link';
-import { ArrowUpRight } from 'lucide-react';
 import type { ProductCardData } from '@/types';
 import type { ClickSource } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { discountPercent } from '@/lib/format';
-import { goPath } from '@/lib/site';
 import { SmartImage } from '@/components/shared/smart-image';
 import { PlatformBadge } from '@/components/shared/platform-badge';
 import { Price } from '@/components/shared/price';
+import { BuyConfirmButton } from '@/components/products/buy-confirm-button';
 
 interface ProductCardProps {
   product: ProductCardData;
@@ -71,14 +70,7 @@ export function ProductCard({
           size="sm"
         />
 
-        <Link
-          href={goPath(product.slug, source)}
-          rel="nofollow sponsored"
-          className="mt-1 inline-flex items-center justify-center gap-1 rounded-lg bg-secondary px-3 py-2 text-sm font-semibold text-secondary-foreground transition-colors hover:bg-primary hover:text-primary-foreground"
-        >
-          {cta}
-          <ArrowUpRight className="size-4" />
-        </Link>
+        <BuyConfirmButton slug={product.slug} source={source} cta={cta} />
       </div>
     </article>
   );

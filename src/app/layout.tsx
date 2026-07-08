@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { Toaster } from 'sonner';
 import { fraunces, manrope } from '@/lib/fonts';
 import { ThemeProvider } from '@/components/theme-provider';
-import { SITE_NAME, SITE_TAGLINE } from '@/lib/constants';
+import { SITE_NAME } from '@/lib/constants';
 import { getSiteUrl } from '@/lib/site';
 import './globals.css';
 
