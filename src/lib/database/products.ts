@@ -19,7 +19,8 @@ export type ProductSort =
   | 'newest'
   | 'price_asc'
   | 'price_desc'
-  | 'featured';
+  | 'featured'
+  | 'discount';
 
 export interface ProductListParams {
   page?: number;
@@ -102,6 +103,32 @@ export async function getPublishedProducts(
   if (typeof maxPrice === 'number') query = query.lte('price', maxPrice);
   if (categorySlug) {
     query = query.eq('product_categories.categories.slug', categorySlug);
+  }
+
+  // Sắp theo % giảm giá: đây là giá trị TÍNH TOÁN (không phải cột) nên PostgREST
+  // .order() không làm được → lấy toàn bộ bản ghi khớp filter rồi sắp trong bộ
+  // nhớ. Store nhỏ nên an toàn; sản phẩm giảm nhiều lên đầu, không ẩn cái nào.
+  if (sort === 'discount') {
+    query = query.order('published_at', { ascending: false, nullsFirst: false });
+    const { data, count, error } = await query;
+    if (error) throw error;
+    const all = (data ?? []) as unknown as ProductCardData[];
+    const pct = (p: ProductCardData) => {
+      const price = Number(p.price);
+      const orig = Number(p.original_price);
+      return Number.isFinite(price) && Number.isFinite(orig) && orig > price && orig > 0
+        ? (orig - price) / orig
+        : -1; // không có giảm giá → xếp cuối
+    };
+    const sorted = all.slice().sort((a, b) => pct(b) - pct(a)); // V8 sort ổn định → giữ mới nhất khi bằng nhau
+    const total = count ?? all.length;
+    return {
+      items: sorted.slice(from, from + pageSize),
+      total,
+      page,
+      pageSize,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
   }
 
   for (const spec of orderSpecs(sort)) {

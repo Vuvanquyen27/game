@@ -21,6 +21,7 @@ const SORT_OPTIONS: { value: ProductSort; label: string }[] = [
   { value: 'newest', label: 'Mới nhất' },
   { value: 'price_asc', label: 'Giá: thấp → cao' },
   { value: 'price_desc', label: 'Giá: cao → thấp' },
+  { value: 'discount', label: 'Giảm giá nhiều nhất' },
   { value: 'featured', label: 'Nổi bật' },
 ];
 

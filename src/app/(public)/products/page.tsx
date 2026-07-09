@@ -22,7 +22,13 @@ export const metadata: Metadata = {
 };
 
 const PAGE_SIZE = 24;
-const SORTS: ProductSort[] = ['newest', 'price_asc', 'price_desc', 'featured'];
+const SORTS: ProductSort[] = [
+  'newest',
+  'price_asc',
+  'price_desc',
+  'discount',
+  'featured',
+];
 
 type SearchParamsRecord = Record<string, string | string[] | undefined>;
 
