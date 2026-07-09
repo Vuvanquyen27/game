@@ -4,13 +4,18 @@ import {
   PLATFORMS,
   PRODUCT_STATUSES,
 } from '@/lib/constants';
-import { isValidHttpUrl } from '@/lib/security/url';
+import { isValidHttpUrl, normalizeAffiliateUrl } from '@/lib/security/url';
 
-const httpsUrl = z
+/**
+ * URL affiliate: tự thêm "https://" khi người nhập bỏ sót scheme
+ * (vd "s.shopee.vn/xxx"), sau đó bắt buộc phải là http/https hợp lệ.
+ */
+const affiliateUrl = z
   .string()
   .trim()
+  .transform((v) => normalizeAffiliateUrl(v) ?? v)
   .refine((v) => isValidHttpUrl(v), {
-    message: 'URL phải bắt đầu bằng http:// hoặc https://',
+    message: 'URL phải bắt đầu bằng http:// hoặc https:// và là link hợp lệ',
   });
 
 const optionalHttpUrl = z
@@ -54,7 +59,7 @@ export const productFormSchema = z
     description: z.string().trim().max(20000).optional().or(z.literal('')),
     platform: z.enum(PLATFORMS),
     original_url: optionalHttpUrl,
-    affiliate_url: httpsUrl,
+    affiliate_url: affiliateUrl,
     image_url: optionalHttpUrl,
     price: money,
     original_price: money,

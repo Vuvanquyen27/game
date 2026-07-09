@@ -43,4 +43,20 @@ describe('normalizeAffiliateUrl', () => {
   it('trả null cho scheme không hợp lệ', () => {
     expect(normalizeAffiliateUrl('ftp://x')).toBeNull();
   });
+
+  it('tự thêm https:// khi thiếu scheme', () => {
+    expect(normalizeAffiliateUrl('s.shopee.vn/9AMoS3Frd7')).toBe(
+      'https://s.shopee.vn/9AMoS3Frd7',
+    );
+    expect(normalizeAffiliateUrl('  shopee.vn/abc  ')).toBe(
+      'https://shopee.vn/abc',
+    );
+  });
+
+  it('trả null cho input rỗng/không hợp lệ', () => {
+    expect(normalizeAffiliateUrl('')).toBeNull();
+    expect(normalizeAffiliateUrl(undefined)).toBeNull();
+    expect(normalizeAffiliateUrl(null)).toBeNull();
+    expect(normalizeAffiliateUrl('javascript:alert(1)')).toBeNull();
+  });
 });

@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
 import { ArrowUpRight, BadgeAlert, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -66,9 +65,12 @@ export function BuyConfirmButton({
             Ở lại Ezriso
           </Button>
           <Button asChild>
-            <Link href={href} rel="nofollow sponsored">
+            {/* Dùng <a> (không phải next/link) để LUÔN hard-navigate sang route
+                /go/[slug]; tránh trường hợp client-nav của App Router xử lý
+                nhầm response HTML của route handler. */}
+            <a href={href} rel="nofollow sponsored">
               Tiếp tục mở Shopee
-            </Link>
+            </a>
           </Button>
         </DialogFooter>
       </DialogContent>

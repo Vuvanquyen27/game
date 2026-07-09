@@ -53,11 +53,25 @@ export function isSafeRedirectUrl(raw: string): boolean {
 }
 
 /**
- * Chuẩn hóa URL affiliate khi lưu: trim, ép phải là http/https.
- * Trả về null nếu không hợp lệ.
+ * Chuẩn hóa URL affiliate khi lưu.
+ * - Trim khoảng trắng.
+ * - Nếu THIẾU scheme (vd dán "s.shopee.vn/xxx") → tự thêm "https://".
+ * - Ép phải là http/https hợp lệ; trả về null nếu không hợp lệ.
+ *
+ * Lưu ý: hàm này KHÔNG khóa riêng domain Shopee vì hệ thống hỗ trợ nhiều nền
+ * tảng (Shopee, Lazada, TikTok Shop, Amazon, ...). Việc chặn scheme nguy hiểm
+ * đã do isValidHttpUrl/isSafeRedirectUrl đảm nhiệm.
  */
-export function normalizeAffiliateUrl(raw: string): string | null {
-  const trimmed = (raw ?? '').trim();
-  if (!isValidHttpUrl(trimmed)) return null;
-  return trimmed;
+export function normalizeAffiliateUrl(raw?: string | null): string | null {
+  if (!raw || typeof raw !== 'string') return null;
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  // Có scheme lạ (javascript:, data:, ...) sẽ bị isValidHttpUrl loại ở dưới.
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(trimmed)
+    ? trimmed
+    : `https://${trimmed}`;
+
+  if (!isValidHttpUrl(withScheme)) return null;
+  return withScheme;
 }

@@ -1,5 +1,5 @@
 import { PLATFORMS, PRODUCT_STATUSES, type Platform } from '@/lib/constants';
-import { isValidHttpUrl } from '@/lib/security/url';
+import { isValidHttpUrl, normalizeAffiliateUrl } from '@/lib/security/url';
 
 /**
  * Parser CSV tối giản, chuẩn RFC-4180 ở mức cần thiết:
@@ -146,8 +146,10 @@ export function validateImportRecords(
       platformSet.has(platformRaw) ? platformRaw : 'custom'
     ) as Platform;
 
-    const affiliate_url = (raw.affiliate_url ?? '').trim();
-    if (!affiliate_url) errors.push('Thiếu affiliate_url');
+    // Tự thêm https:// khi thiếu scheme, rồi mới kiểm tra hợp lệ.
+    const affiliateRaw = (raw.affiliate_url ?? '').trim();
+    const affiliate_url = normalizeAffiliateUrl(affiliateRaw) ?? affiliateRaw;
+    if (!affiliateRaw) errors.push('Thiếu affiliate_url');
     else if (!isValidHttpUrl(affiliate_url))
       errors.push('affiliate_url không phải http/https hợp lệ');
 

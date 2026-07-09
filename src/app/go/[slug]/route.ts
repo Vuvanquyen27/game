@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { isSupabaseConfigured } from '@/lib/supabase/env';
 import { insertClickEvent } from '@/lib/database/clicks';
 import { isSafeRedirectUrl } from '@/lib/security/url';
@@ -184,14 +185,18 @@ export async function GET(
 ) {
   const { slug } = await params;
 
-  if (!isSupabaseConfigured() || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  // Chỉ cần cấu hình Supabase CÔNG KHAI (URL + anon) để TRA CỨU link đích.
+  // QUAN TRỌNG: việc chuyển hướng sang Shopee KHÔNG được phụ thuộc vào
+  // SUPABASE_SERVICE_ROLE_KEY (chỉ dùng cho tracking). Trước đây thiếu key này
+  // trên Vercel khiến MỌI link affiliate bị đẩy về trang chủ.
+  if (!isSupabaseConfigured()) {
     return homeRedirect(request);
   }
 
   const url = new URL(request.url);
   const source = resolveSource(url.searchParams.get('source'));
 
-  // Rate limit theo IP đã hash để tránh lạm dụng
+  // Rate limit theo IP đã hash để tránh lạm dụng (tự fail-open nếu chưa cấu hình).
   const ipHash = hashIp(getClientIp(request.headers));
   const rl = await rateLimiter.check(
     'redirect',
@@ -205,7 +210,9 @@ export async function GET(
     });
   }
 
-  const supabase = createSupabaseAdminClient();
+  // Đọc sản phẩm bằng ANON client (RLS cho phép đọc sản phẩm đã publish).
+  // Nhờ vậy redirect luôn hoạt động miễn là site còn chạy được.
+  const supabase = await createSupabaseServerClient();
 
   const { data: product, error } = await supabase
     .from('products')
@@ -222,24 +229,29 @@ export async function GET(
     return homeRedirect(request);
   }
 
-  // Ghi nhận click (không lưu IP thô — chỉ ip_hash)
-  try {
-    await insertClickEvent(supabase, {
-      product_id: product.id,
-      source,
-      referrer: request.headers.get('referer'),
-      user_agent: request.headers.get('user-agent'),
-      ip_hash: ipHash,
-      utm_source: url.searchParams.get('utm_source'),
-      utm_medium: url.searchParams.get('utm_medium'),
-      utm_campaign: url.searchParams.get('utm_campaign'),
-    });
-  } catch (err) {
-    // Không chặn redirect nếu ghi log lỗi
-    console.warn(
-      '[go] không ghi được click:',
-      err instanceof Error ? err.message : 'unknown',
-    );
+  // Ghi nhận click — CHỈ khi có service-role (bảng click_events bị RLS chặn ghi
+  // với anon). Đây là thao tác PHỤ (best-effort): mọi lỗi/thiếu key đều KHÔNG
+  // được chặn việc chuyển hướng sang Shopee.
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    try {
+      const admin = createSupabaseAdminClient();
+      await insertClickEvent(admin, {
+        product_id: product.id,
+        source,
+        referrer: request.headers.get('referer'),
+        user_agent: request.headers.get('user-agent'),
+        ip_hash: ipHash,
+        utm_source: url.searchParams.get('utm_source'),
+        utm_medium: url.searchParams.get('utm_medium'),
+        utm_campaign: url.searchParams.get('utm_campaign'),
+      });
+    } catch (err) {
+      // Không chặn redirect nếu ghi log lỗi
+      console.warn(
+        '[go] không ghi được click:',
+        err instanceof Error ? err.message : 'unknown',
+      );
+    }
   }
 
   return new NextResponse(continuePage(product.title, product.affiliate_url), {
